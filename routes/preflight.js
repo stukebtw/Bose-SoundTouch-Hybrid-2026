@@ -4,20 +4,25 @@ const path = require('path');
 const axios = require('axios');
 const xml2js = require('xml2js');
 const net = require('net');
+// ⚠️ WARNING: SET THIS TO false BEFORE GITHUB RELEASE!
+const FORCE_TEST_JANITOR = false;
 
 // 1. THE NATIVE INJECTOR (Universal Timing Sequence)
 function injectPort17000Commands(ip, commands) {
     return new Promise((resolve) => {
         const client = new net.Socket();
         client.setTimeout(20000); 
+        let isSocketAlive = true; // 🌟 THE FIX: Flag to abort the loop
         
         client.on('error', (err) => {
             console.log(`   ├─ ❌ Port 17000 Error: ${err.message}`);
+            isSocketAlive = false; // Kill the loop
             resolve(false);
         });
         
         client.on('timeout', () => { 
             console.log(`   ├─ ⚠️ Port 17000 Connection Timed Out.`);
+            isSocketAlive = false; // Kill the loop
             client.destroy(); 
             resolve(true); 
         });
@@ -28,11 +33,15 @@ function injectPort17000Commands(ip, commands) {
             // Bypass lazy-load bug with wake-up carriage returns
             client.write('\r\n');
             await new Promise(r => setTimeout(r, 1000));
+            if (!isSocketAlive) return; // Check heartbeat
             client.write('sys configuration\r\n');
             await new Promise(r => setTimeout(r, 1500));
+            if (!isSocketAlive) return; // Check heartbeat
 
 			// Sequential injection with universal NVRAM delays
             for (let i = 0; i < commands.length; i++) {
+                if (!isSocketAlive) break; // 🌟 THE FIX: Immediately halt injection if socket died
+
                 let cmdLog = commands[i].split(' ')[1] || 'command';
                 
                 // Extract the actual values for the console log
@@ -49,15 +58,39 @@ function injectPort17000Commands(ip, commands) {
                 await new Promise(r => setTimeout(r, 1000)); // Crucial 1000ms universal delay
             }
             
-            client.destroy();
-            resolve(true);
+            if (isSocketAlive) {
+                client.destroy();
+                resolve(true);
+            }
         });
     });
 }
 
-// THE NATIVE TELNET JANITOR (Upgraded with Error Trapping)
-function telnetJanitor(ip) {
-    return new Promise((resolve) => {
+// THE NATIVE TELNET JANITOR (Upgraded with Error Trapping & Test Mode)
+function telnetJanitor(ip, targetIp = 'all') { // 🌟 ADDED targetIp HERE
+    return new Promise(async (resolve) => {
+        
+		// ==========================================
+        // 🧪 TEST OVERRIDE MODE (Bypasses Port 23)
+        // ==========================================
+        // 🌟 ONLY TRIGGER IF A SPECIFIC SPEAKER WAS FORCED IN THE UI
+        if (FORCE_TEST_JANITOR && targetIp === ip) { 
+            console.log(`   ├─ 🚨 [TEST MODE] Forcing Janitor sequence on ${ip} without USB...`);
+            console.log(`   ├─ [Janitor] Logging in as root...`);
+            console.log(`   ├─ [Janitor] 🧹 Deleting legacy V1/V2 OverrideSdkPrivateCfg.xml...`);
+            console.log(`   ├─ [Janitor] ✅ File successfully deleted from memory.`);
+            console.log(`   ├─ [Janitor] Rebooting to clear memory...`);
+            
+			// 🌟 REAL HARDWARE REBOOT VIA PORT 17000 FOR TIMING TEST
+            await injectPort17000Commands(ip, ['sys reboot']);
+            
+            setTimeout(() => resolve(true), 500);
+            return; // 🛑 EXIT EARLY! Do not run the real telnet code below.
+        }
+
+        // ==========================================
+        // 🏭 REAL PRODUCTION MODE
+        // ==========================================
         const client = new net.Socket();
         client.setTimeout(2000); // Give up fast if port 23 is closed
         let shellOutput = "";
@@ -84,7 +117,7 @@ function telnetJanitor(ip) {
 
                     setTimeout(() => {
                         // Error trapping based on shell response					
-					if (shellOutput.includes('No such file')) {
+                        if (shellOutput.includes('No such file')) {
                             console.log(`   ├─ ⚠️ [Janitor] Notice: File was already gone. Skipping reboot.`);
                             client.destroy();
                             resolve(false);
@@ -111,6 +144,20 @@ function telnetJanitor(ip) {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // LEGACY USB WARNING BANNER
 function showLegacyUSBWarning(ip) {
     console.log(`\n=======================================================================`);
@@ -131,8 +178,11 @@ function showLegacyUSBWarning(ip) {
 
 // PAUSE PREFLIGHT WHILE JANITOR REBOOTS SPEAKER
 async function waitForJanitorReboot(ip) {
+    console.log(`   ├─ ⏳ Allowing 35 seconds for ${ip} network stack to shut down...`);
+    await new Promise(r => setTimeout(r, 35000)); // 🌟 THE FIX: Hard wait for hardware to drop
+    
     let online = false, attempts = 0;
-    process.stdout.write(`   ├─ ⏳ Waiting for ${ip} to reboot from Janitor wipe `);
+    process.stdout.write(`   ├─ ⏳ Polling ${ip} until network reconnects `);
     while (!online && attempts < 24) {
         try {
             await axios.get(`http://${ip}:8090/info`, { timeout: 2000 });
@@ -173,7 +223,9 @@ async function runSetup(forceMode = false, targetIp = 'all') {
         
         try {
             // 1. RUN TELNET JANITOR FIRST
-            const justCleaned = await telnetJanitor(speaker.ip);
+			// 1. RUN TELNET JANITOR FIRST
+            const justCleaned = await telnetJanitor(speaker.ip, targetIp); // 🌟 JUST ADD targetIp HERE
+            //const justCleaned = await telnetJanitor(speaker.ip);
             if (justCleaned) {
                 // If it cleaned it, the speaker is rebooting. We must wait!
                 const isBack = await waitForJanitorReboot(speaker.ip);

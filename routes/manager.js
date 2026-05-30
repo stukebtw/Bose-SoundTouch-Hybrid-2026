@@ -317,9 +317,9 @@ router.get('/manager/providers', async(req, res) => {
 // Performs a unified search across Music Assistant providers.
 router.post('/manager/search', async(req, res) => {
     let { query, source, type, limit, providerFilter } = req.body;
-    let searchLimit = parseInt(limit) || 100;
-    if (searchLimit > 1000)
-        searchLimit = 1000;
+    let searchLimit = parseInt(limit) || 25;
+    if (searchLimit > 100)
+        searchLimit = 100;
     if (!query || query.trim() === "")
         return res.json([]);
 
@@ -706,4 +706,4 @@ router.post('/manager/play_stream', async(req, res) => {
     }
 });
 
-module.exports = router; 
+module.exports = router;

@@ -1,4 +1,4 @@
-# V3.5 Quick Notes: 
+# V3.5.1 Quick Notes: 
 *	🔊 Addresses all known bugs and Several Enhancements
 *	🔊 Includes a complete revamp of the Bose cloud simulation inject sequence. Now completely automated (no USB Stick)
 *	🔊 Auto config options and additional system tools on the Tools page to control app behavior and trouble shooting

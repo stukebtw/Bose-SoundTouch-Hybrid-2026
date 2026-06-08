@@ -129,29 +129,40 @@ async function enforcePlayerConfigs(speakers) {
             let activeMode = (currentProtocol === airplayId || currentProtocol.startsWith('ap') || currentProtocol.startsWith('spb') || currentProtocol.includes('native')) ? 'airplay' : 'dlna'; 
             let targetConfigs = {};
 
-            // STRICT EXACT MATCH: Values mirrored exactly from the Gold Standard JSON
+			// =====================================================================
+            // STRICT EXACT MATCH: Values mirrored exactly from Gold Standard JSON
+            // =====================================================================
+            
+            // 1. Core Settings (Applied to all speakers regardless of protocol)
+            targetConfigs["power_control"]             = "none";
+            targetConfigs["auto_play"]                 = false; 
+            targetConfigs["volume_normalization"]      = false;
+            targetConfigs["output_limiter"]            = true;               // Updated from JSON
+            targetConfigs["tts_pre_announce"]          = false;
+            targetConfigs["smart_fades_mode"]          = "disabled"; 
+            targetConfigs["volume_control"]            = "follow_protocol";  // Updated from JSON
+            targetConfigs["mute_control"]              = "follow_protocol";  // Updated from JSON
+
             if (activeMode === 'airplay') {
                 targetConfigs["preferred_output_protocol"] = airplayId; 
-                targetConfigs["power_control"]             = "none";
-                targetConfigs["auto_play"]                 = false; 
-                targetConfigs["volume_normalization"]      = false;
-                targetConfigs["output_limiter"]            = false; 
-                targetConfigs["tts_pre_announce"]          = false;
-                targetConfigs["smart_fades_mode"]          = "disabled"; 
-                targetConfigs["volume_control"]            = "none";
-                targetConfigs["mute_control"]              = "none";
+                
+                // 2. AirPlay Protocol Enforcement
+                targetConfigs[`${airplayId}||protocol||airplay_protocol`] = 0;
+                targetConfigs[`${airplayId}||protocol||encryption`]       = true;
+                targetConfigs[`${airplayId}||protocol||alac_encode`]      = true;
+                targetConfigs[`${airplayId}||protocol||output_channels`]  = "stereo";
+                targetConfigs[`${airplayId}||protocol||sync_adjust`]      = 0;
+                targetConfigs[`${airplayId}||protocol||airplay_latency`]  = 1000;
             } else {
-                // DLNA Mode Enforcement
                 targetConfigs["preferred_output_protocol"] = dlnaId; 
-                targetConfigs["power_control"]             = "none";
-                targetConfigs["auto_play"]                 = false; 
-                targetConfigs["volume_normalization"]      = false;
-                targetConfigs["output_limiter"]            = false; 
-                targetConfigs["tts_pre_announce"]          = false;
-                targetConfigs["smart_fades_mode"]          = "disabled"; 
-                targetConfigs["volume_control"]            = dlnaId; 
-                targetConfigs["mute_control"]              = dlnaId; 
+                
+                // 3. DLNA Protocol Enforcement
+                targetConfigs[`${dlnaId}||protocol||flow_mode`]                        = true;
+                targetConfigs[`${dlnaId}||protocol||http_profile`]                     = "no_content_length";
+                targetConfigs[`${dlnaId}||protocol||enable_icy_metadata`]              = "disabled";
+                targetConfigs[`${dlnaId}||protocol||crossfade_different_sample_rates`] = true;
             }
+
 
             // --- THE BATCH FIX ---
             let changesMade = [];

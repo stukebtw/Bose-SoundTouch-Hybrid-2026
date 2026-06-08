@@ -269,8 +269,8 @@ router.get('/streaming/account/:id/full', async (req, res) => {
 
 router.get('/streaming/account/:id/device/:deviceId/presets', (req, res) => {
     const reqIp = getIp(req);
-    if (isDebug()) console.log(`[Bose Cloud] 🔄 Standby Preset Sync requested by ${reqIp}. Delivering Hybrid Presets...`);
-    res.send(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n${generatePresetsXml()}`);
+    console.log(`[Bose Cloud] 🔄 Standby Preset Sync requested by ${reqIp}. Delivering Hybrid Presets...`);
+    res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n${generatePresetsXml()}`);
 });
 
 // ============================================================================

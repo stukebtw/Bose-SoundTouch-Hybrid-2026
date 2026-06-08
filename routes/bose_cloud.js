@@ -286,31 +286,32 @@ router.get('/streaming/account/:id/device/:deviceId/group/', async (req, res) =>
         const activePair = pairs.find(p => p.leftIp === reqIp || p.rightIp === reqIp);
 
         if (activePair) {
-            if (isDebug()) console.log(`[Bose Cloud] 👯 ST10 Stereo Sync requested by ${reqIp}. Compiling GroupService.xml for: ${activePair.name}`);
-
-            const isMaster = activePair.leftIp === reqIp;
-            const role = isMaster ? 'MASTER' : 'SLAVE';
+            console.log(`[Bose Cloud] 👯 ST10 Stereo Sync requested by ${reqIp}. Compiling GroupService.xml for: ${activePair.name}`);
 
             const leftIdentity = await getSpeakerIdentity(activePair.leftIp);
             const rightIdentity = await getSpeakerIdentity(activePair.rightIp);
 
             const groupXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<group id="${leftIdentity.deviceId}">
+<group id="${activePair.id}">
+    <masterDeviceId>${leftIdentity.deviceId}</masterDeviceId>
     <name>${activePair.name}</name>
-    <master>${leftIdentity.deviceId}</master>
-    <role>${role}</role>
-    <status>GROUP_OK</status>
-    <senderIPAddress>${activePair.leftIp}</senderIPAddress>
-    <senderIsMaster>true</senderIsMaster>
-    <member ipaddress="${activePair.leftIp}" macAddress="${leftIdentity.deviceId}">${leftIdentity.deviceId}</member>
-    <member ipaddress="${activePair.rightIp}" macAddress="${rightIdentity.deviceId}">${rightIdentity.deviceId}</member>
+    <roles>
+        <groupRole>
+            <deviceId>${leftIdentity.deviceId}</deviceId>
+            <role>LEFT</role>
+        </groupRole>
+        <groupRole>
+            <deviceId>${rightIdentity.deviceId}</deviceId>
+            <role>RIGHT</role>
+        </groupRole>
+    </roles>
 </group>`;
             
-            return res.send(groupXml);
+            return res.type('application/xml').send(groupXml);
         }
     }
 
-    res.send('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><group/>');
+    res.type('application/xml').send('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><group/>');
 });
 
 

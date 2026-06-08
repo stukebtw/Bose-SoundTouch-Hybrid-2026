@@ -1,7 +1,7 @@
 // ============================================================================
 // PHASE 1: IMPORTS & CONSTANTS
 // ============================================================================
-const CURRENT_VERSION = "v3.5.1";
+const CURRENT_VERSION = "v3.5.2";
 const ENV_SCHEMA_VERSION = "v3.5"; 
 let UPDATE_CACHED_DATA = { updateAvailable: false, current: CURRENT_VERSION };
 const express = require('express');
@@ -434,14 +434,14 @@ if (!isReady) {
                 console.log(`[Boot] ⚠️ Music Assistant is online (v${massHealth.version}), but was NOT restarted.`);
             }
             
-            const minReq = [2, 8, 5];
+            const minReq = [2, 8, 9];
             const current = massHealth.version.split('.').map(Number);
             const isOutdated = current.some((num, i) => num < minReq[i]);
             if (isOutdated) {
-                console.log(`[Boot] ⚠️  NOTICE: Music Assistant 2.8.5 or later is required.\n`);
+                console.log(`[Boot] ⚠️  NOTICE: Music Assistant 2.8.9 or later is required.\n`);
             }
 
-            // STEP 6: Smart Polling & Configuration Injection        
+          // STEP 6: Smart Polling & Configuration Injection        
             const { enforcePlayerConfigs } = require('./routes/mass_utils');
             await enforcePlayerConfigs(ALIVE_SPEAKERS);
             console.log(`-------------------------------------------------------------------------`);            

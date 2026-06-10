@@ -58,6 +58,7 @@ async function getMassHealth() {
     }
 }
 
+
 // --- DYNAMIC PLAYER CONFIGURATION ENFORCER (WITH REGEX IP MATCH) ---
 async function enforcePlayerConfigs(speakers) {
     const baseUrl = `http://${process.env.MASS_IP}:${process.env.MASS_PORT}`;
@@ -110,8 +111,25 @@ async function enforcePlayerConfigs(speakers) {
             const airplayId = Object.keys(currentValues).find(k => k.startsWith('ap') && k.includes('||protocol||'))?.split('||')[0];
             
             const currentPref = currentValues['preferred_output_protocol']?.value || '';
-            const activeMode = currentPref.includes(airplayId) ? 'airplay' : 'dlna';
-            const activeId = activeMode === 'airplay' ? airplayId : dlnaId;
+            
+            let activeMode;
+            let activeId;
+
+            // 1. If it's currently set to AirPlay, leave it alone
+            if (airplayId && currentPref.includes(airplayId)) {
+                activeMode = 'airplay';
+                activeId = airplayId;
+            } 
+            // 2. If it's currently set to DLNA, leave it alone
+            else if (dlnaId && currentPref.includes(dlnaId)) {
+                activeMode = 'dlna';
+                activeId = dlnaId;
+            } 
+            // 3. It's neither (e.g., 'Auto', blank, or bogus). Force it to DLNA.
+            else {
+                activeMode = 'dlna';
+                activeId = dlnaId;
+            }
 
             const targetConfigs = {
                 "power_control": "none",
@@ -119,8 +137,8 @@ async function enforcePlayerConfigs(speakers) {
                 "volume_normalization": false,
                 "tts_pre_announce": false,
                 "smart_fades_mode": "disabled",
-                "volume_control": "follow_protocol",
-                "mute_control": "follow_protocol",
+                "volume_control": "DLNA",
+                "mute_control": "DLNA",
                 "preferred_output_protocol": activeId,
                 [`${activeId}||protocol||enabled`]: true
             };
@@ -145,7 +163,6 @@ async function enforcePlayerConfigs(speakers) {
         console.error(`[MASS Utils] ❌ Verification failed: ${e.response?.data || e.message}`);
     }
 }
-
 
 
 

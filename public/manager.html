@@ -719,23 +719,23 @@
 
       let btns = '';
 
-      // IF HISTORY (-1): Show instant Save and Delete
+		// IF HISTORY (-1): Show instant Save and Delete
       if (item.slot === -1) {
           btns = `<button class="btn-sm" onclick="saveToLibraryDirect('${item.uuid}')">💾 Save to Library</button>
-                <button class="btn-sm" onclick="deleteItem('${item.uuid}', true)" title="Delete Stream" style="color: var(--danger);">✖</button>`;
+                <button class="btn-sm action-delete" onclick="deleteItem('${item.uuid}', true)" title="Delete Stream" style="color: var(--danger); font-size: 1.2em; font-weight: bold;">✖</button>`;
       }
       // IF NORMAL: Show Play, plus Edit/Save
       else {
           btns = `<button class="btn-sm" onclick="playItemGlobal('${uriEnc}')">▶ Play</button>`;
           if (isLib) {
               if (item.slot > 0) {
-                  // Preset: Edit button + red X
+                  // Preset: Edit button + Uniform Red X
                   btns += ` <button class="btn-sm" onclick="openModal(${safeItem})">✎ Edit</button>
-            <button class="btn-sm action-clear" onclick="deleteItem('${item.uuid}')" title="Clear Preset" style="color: red;">✖</button>`;
+            <button class="btn-sm action-delete" onclick="deleteItem('${item.uuid}')" title="Clear Preset" style="color: var(--danger); font-size: 1.2em; font-weight: bold;">✖</button>`;
               } else {
-                  // Favorite: Edit button + Red Trash
+                  // Favorite: Edit button + Uniform Red X
                   btns += ` <button class="btn-sm" onclick="openModal(${safeItem})">✎ Edit</button>
-            <button class="btn-sm action-clear" onclick="deleteItem('${item.uuid}')" title="Delete Favorite" style="color: red;">🗑️</button>`;
+            <button class="btn-sm action-delete" onclick="deleteItem('${item.uuid}')" title="Delete Favorite" style="color: var(--danger); font-size: 1.2em; font-weight: bold;">✖</button>`;
               }
           } else if (allowSave) {
               btns += ` <button class="btn-sm" onclick="openModal(${safeItem})">💾 Save</button>`;

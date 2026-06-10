@@ -2,8 +2,8 @@
 *	🔊 Addresses all known bugs and Several Enhancements
 *	🔊 Includes a complete revamp of the Bose cloud simulation inject sequence. Now completely automated (no USB Stick)
 *	🔊 Auto config options and additional system tools on the Tools page to control app behavior and trouble shooting
-*	🔊 Beta version of Stereo Pairing of ST10s. I need testers because I only have 1 ST10
-*	🔊 You must use (download) the new v3.5 bose-soundtouch-hybrid.yml. It has installs changes in addition to the updated version tag (do not use your old YML)
+*	🔊 Stereo Pairing of ST10s
+*	🔊 You must use (download) the new v3.5.3 bose-soundtouch-hybrid.yml. It has installs changes in addition to the updated version tag (do not use your old YML)
 *	🔊 Startup will also copy a new .ENV to your directory. It will backup your old .ENV. (do not use your old .ENV)
 *	🔊 Startup uses your existing speaker, library and settings json. If you have already have them in will copy in templates you.
 * 🔊 https://github.com/TJGigs/Bose-SoundTouch-Hybrid-2026/blob/main/bose-soundtouch-hybrid.yml

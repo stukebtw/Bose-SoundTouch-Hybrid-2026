@@ -1,12 +1,51 @@
 # .dockerignore
-# Ignore heavy test files, backups, and media
-Misc/
-testscripts/
-Bose-SoundTouch-Hybrid-2026-V3/
+# Everything in here is excluded from the Docker build context.
+# Smaller context = faster builds, smaller images, no secrets leaked.
 
-# Ignore local node_modules (the Dockerfile installs its own fresh ones!)
+# --- Git history (never needed in a container) ---
+.git/
+.gitignore
+
+# --- Secrets (never bake these into an image) ---
+.env
+.env.*
+
+# --- Node modules (Dockerfile installs fresh ones via npm ci) ---
 node_modules/
 package-lock.json
 
-# Ignore user config files (these are mapped dynamically via the YAML)
+# --- User config (volume-mounted at runtime via YAML) ---
 config/
+
+# --- Logs (written at runtime, belong on host via volume mount) ---
+logs/
+*.log
+npm-debug.log
+
+# --- Dev/test artifacts ---
+testscripts/
+Misc/
+misc/
+
+# --- Documentation (not needed in runtime image) ---
+Docs/
+docs/
+README.md
+CHANGELOG.md
+
+# --- AI workflow files ---
+claude.md
+CLAUDE.md
+.claude/
+
+# --- Old project versions ---
+Bose-SoundTouch-Hybrid-2026-V3/
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editor/IDE ---
+.vscode/
+*.code-workspace

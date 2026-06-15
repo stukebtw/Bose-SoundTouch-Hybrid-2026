@@ -117,19 +117,22 @@ function generateSourceProviders(reqIp) {
     return xml;
 }
 
-function generateProviderSettingsXml(reqIp) {
-    const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<providerSettings>
-    <provider id="11">
-        <name>LOCAL_INTERNET_RADIO</name>
-        <status>READY</status>
-    </provider>
-</providerSettings>`;
-    
-    // WRITE TO FILE
-    fs.writeFileSync(path.join(LOG_DIR, `${reqIp}_provider_settings.xml`), xml);
-    return xml;
-}
+// RESEARCH NOTE: /streaming/account/:id/provider_settings is a subscription/trial
+// eligibility endpoint for premium services (Spotify, SiriusXM, etc.) — NOT a
+// LOCAL_INTERNET_RADIO status endpoint. Two sources confirm this:
+//
+//   1. julius-d UberBoseOpenAPI spec (github.com/julius-d/ueberboese-api):
+//      description: "Unclear. Returns empty 200 ok response for me"
+//      — the real Bose cloud returned an EMPTY body, not XML.
+//
+//   2. soundcork (github.com/deborahgu/soundcork), marge.py line ~287:
+//      comment: "this seems to report information like if you're eligible for a free trial"
+//      — it returns subscription eligibility data for provider IDs like 14 (Spotify),
+//      NOT provider 11 (LOCAL_INTERNET_RADIO).
+//
+// Returning LOCAL_INTERNET_RADIO XML here was wrong. The 3x repeat requests were likely
+// the speaker polling multiple provider IDs for subscription status and getting back
+// a response it didn't understand, causing retries. Empty 200 OK matches real cloud behavior.
 
 function generatePresetsXml() {
     const time = getTimestamp();
@@ -235,9 +238,13 @@ router.get('/bmx/registry/v1/services', (req, res) => {
     if (isDebug()) console.log(`[Bose Cloud] ☁️ Delivered BMX Registry to ${reqIp}`);
     res.set('Content-Type', 'application/json');
     
+    // askAgainAfter: how long (ms) the speaker waits before re-checking BMX services.
+    // Real Bose cloud used 1230482 (~20.5 min) per julius-d's UberBoseOpenAPI capture.
+    // Set to 7 days (604800000) to minimize mid-standby re-validation events that wipe presets.
+    // The 2am preset audit is the safety net for any preset loss that still occurs.
     const registryData = {
         "_links": { "bmx_services_availability": { "href": "../servicesAvailability" } },
-        "askAgainAfter": 1230482,
+        "askAgainAfter": 604800000,
         "bmx_services": [
             {
                 "id": { "name": "LOCAL_INTERNET_RADIO", "value": 11 },
@@ -294,10 +301,9 @@ router.get('/streaming/account/:id/device/:deviceId/presets', (req, res) => {
 
 router.get('/streaming/account/:id/provider_settings', (req, res) => {
     const reqIp = getIp(req);
-	// TESTING ONLY: Allow browser to spoof the speaker's IP using ?ip=
-    //const reqIp = req.query.ip || getIp(req);
-    console.log(`[Bose Cloud] ⚙️ Provider Settings requested by ${reqIp}. Delivering valid settings...`);
-    res.send(generateProviderSettingsXml(reqIp));
+    console.log(`[Bose Cloud] ⚙️ Provider Settings requested by ${reqIp}. Returning empty 200 (matches real Bose cloud UberBose/SoundCork Findings).`);
+    res.set('Content-Type', 'application/vnd.bose.streaming-v1.2+xml');
+    res.status(200).send('');
 });
 
 // ============================================================================

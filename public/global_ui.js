@@ -1,9 +1,9 @@
 // --- GITHUB UPDATE BANNER HTML ---
 const updateBannerHTML = `
-<div id="github-update-banner" style="display: none; background: #0056b3; color: white; padding: 12px; text-align: center; font-family: sans-serif; position: relative; z-index: 10000; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+<div id="github-update-banner" class="banner banner-update">
     🚀 <strong>Update Available!</strong> Version <span id="update-version-text"></span> is out.
-    <a id="update-link" href="#" target="_blank" style="color: #fff; text-decoration: underline; margin: 0 20px; font-weight: bold;">View Release Notes & Update</a>
-    <button id="update-dismiss-btn" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.5); color: white; padding: 5px 15px; cursor: pointer; border-radius: 4px; font-weight: bold;">Dismiss</button>
+    <a id="update-link" class="banner-link" href="#" target="_blank">View Release Notes & Update</a>
+    <button id="update-dismiss-btn" class="banner-button">Dismiss</button>
 </div>
 `;
 
@@ -64,9 +64,9 @@ const maHealthBannerHTML = `
         </ul>
     </div>
     <div class="banner-actions">
-        <button class="btn-dismiss" style="background: #2ecc71; color: #000; font-weight: bold; border: none;" onclick="dismissHealthModal()">✅ Dismiss</button>
-        <button class="btn-reconnect" onclick="executeGlobalRecovery(this)">🚨 Reload DLNA & AirPlay</button>
-        <button class="btn-restart" onclick="executeGlobalRestart(this)">Restart Service</button>
+        <button class="btn-dismiss banner-button banner-button--success" onclick="dismissHealthModal()">✅ Dismiss</button>
+        <button class="btn-reconnect banner-button" onclick="executeGlobalRecovery(this)">🚨 Reload DLNA & AirPlay</button>
+        <button class="btn-restart banner-button" onclick="executeGlobalRestart(this)">Restart Service</button>
     </div>
 </div>
 `;
@@ -283,47 +283,3 @@ window.triggerGlobalAllOff = async function() {
     }
 };
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // Only execute this fetch if we are actually on the tools.html page
-    if (!document.getElementById('pref_autoResume')) return; 
-    
-    try {
-        const res = await fetch('/api/admin/settings');
-        const prefs = await res.json();
-        document.getElementById('pref_autoResume').checked = prefs.autoResumePreset;
-        document.getElementById('pref_autoRestart').checked = prefs.autoRestartMass;
-        document.getElementById('pref_autoSync').checked = prefs.autoSyncVolume;
-        document.getElementById('pref_autoSort').checked = prefs.autoSortSpeakers;
-        
-        // Load the new bypass toggle
-        const bypassToggle = document.getElementById('pref_bypassCloudEmulation');
-        if (bypassToggle) bypassToggle.checked = prefs.bypassCloudEmulation;
-        
-    } catch(e) { 
-        console.error("[UI] Failed to load preferences", e); 
-    }
-});
-
-async function savePreferences() {
-    const payload = {
-        autoResumePreset: document.getElementById('pref_autoResume').checked,
-        autoRestartMass: document.getElementById('pref_autoRestart').checked,
-        autoSyncVolume: document.getElementById('pref_autoSync').checked,
-        autoSortSpeakers: document.getElementById('pref_autoSort').checked
-    };
-    
-    // Save the new bypass toggle
-    const bypassToggle = document.getElementById('pref_bypassCloudEmulation');
-    if (bypassToggle) payload.bypassCloudEmulation = bypassToggle.checked;
-    
-    try {
-        const res = await fetch('/api/admin/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (res.ok) alert("✅ Preferences saved successfully.");
-    } catch(e) { 
-        alert("❌ Failed to save preferences."); 
-    }
-}

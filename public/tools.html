@@ -13,18 +13,18 @@
 	</head>
 <body>
     
-    <div class="container">
+    <div class="container tools-page">
         
         <div class="app-header">
             <div style="display:flex; align-items:center; flex:1">
                 
-                <div style="display: flex; flex-direction: column; justify-content: center; margin-right: 30px;">
+                <div class="header-brand-stack">
                     <div class="app-title" style="margin-right: 0; margin-bottom: 2px;">
                         <img src="images/hybrid_icon.png" style="height:32px; width:auto;" alt="Logo">
                         Bose SoundTouch Hybrid
                     </div>
                     
-                    <div style="display: flex; flex-direction: row; gap: 8px; margin-left: 70px; margin-top: 2px;">
+                    <div class="header-badge-row">
                         <div class="badge-pill">
                             <img src="images/hybrid_icon.png" style="height: 10px; width: auto; opacity: 0.8;" alt="App">
                             <span id="badge-app-text">App ?</span> 
@@ -44,65 +44,188 @@
                 </div>
             </div>
             
-            <div style="display:flex; gap:10px;">
-                <button class="btn-help" onclick="toggleTheme()">🌓 Theme</button>
+            <div class="header-actions">
                 <button class="btn-help" onclick="document.getElementById('doc-modal').style.display='flex'">📚Reference</button>
                 <button class="btn-help" onclick="document.getElementById('h-modal').style.display='flex'">💡How To Guides</button>
             </div>
         </div>
-		
 
+        <div class="nav-tabs manager-main-tabs" style="margin-bottom: 20px;">
+            <button class="nav-btn active" data-tab="preferences" onclick="switchToolsTab('preferences')">Application Preferences</button>
+            <button class="nav-btn" data-tab="services" onclick="switchToolsTab('services')">System Services & Tools</button>
+        </div>
 
-			<div class="card" style="margin-bottom: 25px; border-left: 4px solid var(--accent); break-inside: avoid;">
+		<div id="tab-preferences" class="tools-subpage">
+			<div class="card card-accent" style="margin-bottom: 25px; break-inside: avoid;">
 				<h3 style="margin: 0 0 5px 0;">⚙️ Application Preferences</h3>
 				<div class="sub-head" style="margin-bottom: 15px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
 					<span>Configure UI layouts and background automation rules.</span>
-					<span id="tz-display" style="background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; border: 1px solid var(--border);">TZ: Loading...</span>
+					<span id="tz-display" class="badge-pill tz-badge">TZ: Loading...</span>
 				</div>
 			
-			<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-				
-				<div class="inner-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
-					<div>
-						<div style="font-weight: bold; color: var(--text); margin-bottom: 5px;">Search Menu Layout</div>
-						<div style="font-size: 0.85em; color: var(--text); opacity: 0.8; margin-bottom: 15px;">Arrange search provider tabs from left to right.</div>
-						<div id="sortable-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+			<div style="display: flex; flex-direction: column; gap: 20px;">
+
+				<div class="inner-panel">
+					<div style="font-weight: bold; color: var(--text); margin-bottom: 5px;">Search Menu Layout</div>
+					<div style="font-size: 0.85em; color: var(--text); opacity: 0.8; margin-bottom: 12px;">Arrange search provider tabs left to right. Hide tabs you don't want shown. The Global tab is always visible.</div>
+					<div id="sortable-list" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;"></div>
+					<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+						<button class="btn-action btn-blue" style="flex: 1;" onclick="saveSearchOrder()">💾 Save Layout</button>
+						<button class="btn-action" style="flex: 1; background: #1abc9c; color: white; border: none;" onclick="refreshProvidersFromMass()">🔄 Refresh from MASS</button>
 					</div>
-					<button class="primary" onclick="saveSearchOrder()" style="width: 100%; margin-top: 15px; background: #3498db; color: white; border: none;">💾 Save Layout Order</button>
 				</div>
 
-				<div class="inner-panel" style="display: flex; flex-direction: column; justify-content: space-between;">
-					<div>
-						<div style="font-weight: bold; color: var(--text); margin-bottom: 5px;">Background Automation</div>
-						<div style="font-size: 0.85em; color: var(--text); opacity: 0.8; margin-bottom: 15px;">Configure automated behaviors and sync rules.</div>
-						<div class="pref-grid" style="margin-bottom: 0; display: flex; flex-direction: column; gap: 12px;">
+				<div class="inner-panel">
+					<div style="font-weight: bold; color: var(--text); margin-bottom: 5px;">Application Preferences</div>
+					<div style="font-size: 0.85em; color: var(--text); opacity: 0.8; margin-bottom: 15px;">Configure display options and background automation rules.</div>
+
+					<!-- Dark Mode — full width with divider -->
+					<label class="pref-label" style="display: flex; align-items: center; gap: 8px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border);">
+						<input type="checkbox" id="pref_darkMode" class="pref-checkbox" onchange="toggleThemeFromPref(this)"> 🌓 Dark Mode
+					</label>
+
+					<!-- Two-column automation rules -->
+					<div class="prefs-grid">
+
+						<!-- Left column -->
+						<div style="display: flex; flex-direction: column; gap: 12px;">
 							<label class="pref-label"><input type="checkbox" id="pref_autoResume" class="pref-checkbox"> Auto-Resume Presets on Power On</label>
 							<label class="pref-label"><input type="checkbox" id="pref_autoRestart" class="pref-checkbox"> Auto-Reload DLNA & AirPlay on Connection Error</label>
 							<label class="pref-label"><input type="checkbox" id="pref_autoSync" class="pref-checkbox"> Auto-Sync Slave Volume on Grouping</label>
 							<label class="pref-label"><input type="checkbox" id="pref_mobileAutoSortSpeakers" class="pref-checkbox"> Auto-Sort Active Speakers (Mobile Only)</label>
-							<label class="pref-label"><input type="checkbox" id="pref_scheduledSpeakerAudit" class="pref-checkbox"> Enable 4:00 AM Speaker Audit</label>
+						</div>
 
-							<div style="padding-left: 0px; margin-top: -5px;">
+						<!-- Right column -->
+						<div style="display: flex; flex-direction: column; gap: 12px;">
+							<div>
+								<label class="pref-label" style="display: flex; align-items: center; gap: 8px;">
+									<input type="checkbox" id="pref_scheduledSpeakerAudit" class="pref-checkbox" onchange="handleAuditToggle()">
+									Enable Speaker Audit at
+									<select id="pref_scheduledAuditHour" style="background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:2px 4px; border-radius:4px; font-size:0.9em; width:auto;" disabled></select>
+								</label>
+							</div>
+							<div>
 								<label class="pref-label" style="display: flex; align-items: center; gap: 8px;">
 									<input type="checkbox" id="pref_scheduledRestart" class="pref-checkbox" onchange="handleScheduledRestartToggle()">
-									Enable 5:00 AM System Restart
+									Enable System Restart at
+									<select id="pref_scheduledRestartHour" style="background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:2px 4px; border-radius:4px; font-size:0.9em; width:auto;" disabled></select>
 								</label>
 								<label class="pref-label" style="margin-left: 28px; font-size: 0.85em; opacity: 0.8; margin-top: 4px;">
 									<input type="checkbox" id="pref_includeReboot" class="pref-checkbox" disabled> Include All Speaker Reboots
-								</label>						
+								</label>
 							</div>
-							<label class="pref-label"><input type="checkbox" id="pref_bypassCloudEmulation" class="pref-checkbox"> Bypass Cloud Simulation Beta</label>
 						</div>
-						<button class="btn" style="background: var(--accent); color: #000; font-weight: bold; width: 100%; margin-top: 15px; border: none;" onclick="savePreferences()">💾 Save Automation Rules</button>
+
+						<!-- Third column -->
+						<div style="display: flex; flex-direction: column; gap: 12px;">
+							<label class="pref-label"><input type="checkbox" id="pref_bypassCloudEmulation" class="pref-checkbox"> Bypass Cloud Simulation Beta</label>
+							<label class="pref-label" style="opacity: 0.4; pointer-events: none;"><input type="checkbox" id="pref_doubleTapPresets" class="pref-checkbox" disabled> Enable Double Tap Extended Presets</label>
+							<label class="pref-label" style="opacity: 0.4; pointer-events: none;"><input type="checkbox" id="pref_remoteControlHijack" class="pref-checkbox" disabled> Enable Remote Control Hijack</label>
+						</div>
+
+					</div>
+					<button class="btn-action btn-blue" style="width: 100%;" onclick="savePreferences()">💾 Save Preferences</button>
+				</div>
+
+			</div>
+			</div>
+
+			<div class="card card-accent-orange" style="margin-bottom: 25px; height:auto;">
+				<div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="const el = document.getElementById('stereoPairingCollapse'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">
+					<h3 style="margin:0;">🎧 ST10 Stereo Pairing</h3>
+					<span id="stereoPairCount" style="background: var(--input-bg); padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; border: 1px solid var(--border);">0 Pairs</span>
+				</div>
+				<div class="sub-head" style="margin-top: 5px; margin-bottom: 0;">Bond two SoundTouch 10s into a persistent Left/Right stereo pair.</div>
+				
+				<div id="stereoPairingCollapse" style="display: none; margin-top: 15px;">
+					<h6 style="font-weight: bold; color: var(--text); margin-bottom: 10px;">Active Combinations</h6>
+					<ul id="activeStereoPairsList" style="list-style: none; padding: 0; margin-bottom: 20px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+						<li style="padding: 10px; background: var(--input-bg); color: var(--text-secondary); font-style: italic;">No active pairings found.</li>
+					</ul>
+
+					<hr style="border-color: var(--border); margin: 20px 0;">
+
+					<h6 style="font-weight: bold; color: var(--text); margin-bottom: 10px;">Create New Pair</h6>
+					<div style="display: flex; align-items: flex-end; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+						<div style="flex-grow: 1; min-width: 150px;">
+							<label for="leftSpeakerSelect" style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">LEFT CHANNEL</label>
+							<select id="leftSpeakerSelect" style="width:100%; background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
+								<option value="" disabled selected>Select ST10...</option>
+							</select>
+						</div>
+						<div style="flex-grow: 1; min-width: 150px;">
+							<label for="rightSpeakerSelect" style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">RIGHT CHANNEL</label>
+							<select id="rightSpeakerSelect" style="width:100%; background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
+								<option value="" disabled selected>Select ST10...</option>
+							</select>
+						</div>
+						<div style="flex-grow: 1; min-width: 150px;">
+							<label for="pairNameInput" style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">PAIR NAME</label>
+							<input type="text" id="pairNameInput" placeholder="e.g. Office Stereo" style="width:100%; background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
+						</div>
+						<div>
+							<button id="saveStereoPairBtn" class="btn primary" style="white-space: nowrap; background:#f39c12; border:none; margin: 0; padding: 8px 15px;">
+								💾 Save Pair
+							</button>
+						</div>
 					</div>
 				</div>
-		
-
-				
 			</div>
-		</div> 
 
-		<div class="card" style="margin-bottom: 25px; border-left: 3px solid #9b59b6; height:auto;">
+			<!-- ⏰ Scheduled Play Card -->
+			<div class="card card-accent-teal" style="margin-bottom: 25px; height:auto;">
+			<div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="const el = document.getElementById('scheduledPlaysCollapse'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">
+				<h3 style="margin:0;">⏰ Scheduled Play</h3>
+				<span id="scheduledPlayCount" style="background: var(--input-bg); padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; border: 1px solid var(--border);">0 Schedules</span>
+			</div>
+			<div class="sub-head" style="margin-top: 5px; margin-bottom: 0;">Automatically trigger a speaker preset at a set time every day.</div>
+
+			<div id="scheduledPlaysCollapse" style="display: none; margin-top: 15px;">
+				<ul id="scheduledPlaysList" style="list-style: none; padding: 0; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+					<li id="scheduledPlaysEmpty" style="padding: 10px; background: var(--input-bg); color: var(--text-secondary); font-style: italic;">No scheduled plays configured.</li>
+				</ul>
+
+				<div style="display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+					<div style="flex-grow: 1; min-width: 150px;">
+						<label style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">SPEAKER</label>
+						<select id="newPlaySpeaker" style="width:100%; background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
+							<option value="" disabled selected>Select speaker...</option>
+						</select>
+					</div>
+					<div>
+						<label style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">PRESET</label>
+						<select id="newPlayPreset" style="background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
+							<option value="1">1</option>
+							<option value="2">2</option>
+							<option value="3">3</option>
+							<option value="4">4</option>
+							<option value="5">5</option>
+							<option value="6">6</option>
+						</select>
+					</div>
+					<div>
+						<label style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">TIME</label>
+						<div style="display:flex; gap:5px; align-items:center;">
+							<select id="newPlayHour" style="background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
+								<option value="" disabled selected>HH</option>
+							</select>
+							<select id="newPlayMinute" style="background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
+								<option value="" disabled selected>MM</option>
+							</select>
+						</div>
+					</div>
+					<div>
+						<button id="addScheduledPlayBtn" class="btn primary" style="white-space: nowrap; background: var(--accent-teal); border:none; padding: 8px 15px;" onclick="addScheduledPlay()">
+							➕ Add
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		</div>
+
+		<div id="tab-services" class="tools-subpage" style="display:none">
+			<div class="card card-accent-purple" style="margin-bottom: 25px; height:auto;">
 					<h3>⚙️ System Services</h3>
 					<div class="sub-head">Manage container instances and hardware injections.</div>
 					
@@ -179,12 +302,12 @@
 
 
 			
-			<div class="card" style="margin-bottom: 25px; border-left: 3px solid #e74c3c; height:auto;">
+			<div class="card card-accent-danger" style="margin-bottom: 25px; height:auto;">
 				<div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleLogWindow()">
 					<h3 style="margin:0;">🖥️ Live Server Logs</h3>
 					<span id="log-chevron" style="color: var(--text-secondary); font-size: 1.2em;">▼</span>
 				</div>
-				<div class="sub-head" style="margin-top: 5px; margin-bottom: 0;">Captures the last 500 console events from the Node.js server.</div>
+				<div class="sub-head" style="margin-top: 5px; margin-bottom: 0;">Captures the last 1000 console events from the Node.js server.</div>
 				
 				<div id="log-container" style="display: none; margin-top: 15px;">
 					<textarea id="live-log-viewer" class="console-preview" style="height: 300px;" readonly></textarea>
@@ -207,49 +330,7 @@
 				</div>
 			</div>
 				
-			<div class="card" style="margin-bottom: 25px; border-left: 3px solid #f39c12; height:auto;">
-				<div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="const el = document.getElementById('stereoPairingCollapse'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">
-					<h3 style="margin:0;">🎧 ST10 Stereo Pairing</h3>
-					<span id="stereoPairCount" style="background: var(--input-bg); padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; border: 1px solid var(--border);">0 Pairs</span>
-				</div>
-				<div class="sub-head" style="margin-top: 5px; margin-bottom: 0;">Bond two SoundTouch 10s into a persistent Left/Right stereo pair.</div>
-				
-				<div id="stereoPairingCollapse" style="display: none; margin-top: 15px;">
-					<h6 style="font-weight: bold; color: var(--text); margin-bottom: 10px;">Active Combinations</h6>
-					<ul id="activeStereoPairsList" style="list-style: none; padding: 0; margin-bottom: 20px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
-						<li style="padding: 10px; background: var(--input-bg); color: var(--text-secondary); font-style: italic;">No active pairings found.</li>
-					</ul>
-
-					<hr style="border-color: var(--border); margin: 20px 0;">
-
-					<h6 style="font-weight: bold; color: var(--text); margin-bottom: 10px;">Create New Pair</h6>
-					<div style="display: flex; align-items: flex-end; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-						<div style="flex-grow: 1; min-width: 150px;">
-							<label for="leftSpeakerSelect" style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">LEFT CHANNEL</label>
-							<select id="leftSpeakerSelect" style="width:100%; background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
-								<option value="" disabled selected>Select ST10...</option>
-							</select>
-						</div>
-						<div style="flex-grow: 1; min-width: 150px;">
-							<label for="rightSpeakerSelect" style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">RIGHT CHANNEL</label>
-							<select id="rightSpeakerSelect" style="width:100%; background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
-								<option value="" disabled selected>Select ST10...</option>
-							</select>
-						</div>
-						<div style="flex-grow: 1; min-width: 150px;">
-							<label for="pairNameInput" style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">PAIR NAME</label>
-							<input type="text" id="pairNameInput" placeholder="e.g. Office Stereo" style="width:100%; background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
-						</div>
-						<div>
-							<button id="saveStereoPairBtn" class="btn primary" style="white-space: nowrap; background:#f39c12; border:none; margin: 0; padding: 8px 15px;">
-								💾 Save Pair
-							</button>
-						</div>
-					</div>
-				</div>
-			</div>
-	
-			<div class="card" style="margin-bottom: 25px; border-left: 3px solid #1abc9c; height:auto;">
+			<div class="card card-accent-teal" style="margin-bottom: 25px; height:auto;">
 				<div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleWifiWindow()">
 					<h3 style="margin:0;">📶 Wi-Fi Provisioning</h3>
 					<span id="wifi-chevron" style="color: var(--text-secondary); font-size: 1.2em;">▼</span>
@@ -282,8 +363,8 @@
 				</div>
 			</div>
 
+		</div>
 	</div>
-</div>	
 	<div id="doc-modal" class="modal">
 		<div class="modal-content" style="width: 400px;">
 			<div style="display:flex; justify-content:space-between; margin-bottom:20px;">
@@ -388,27 +469,92 @@
 	<script>
 		const SERVER_URL = window.location.protocol + "//" + window.location.host;
 
+		function switchToolsTab(tabName) {
+		    document.querySelectorAll('.tools-subpage').forEach(panel => {
+		        panel.style.display = panel.id === `tab-${tabName}` ? 'block' : 'none';
+		    });
+		    document.querySelectorAll('.nav-tabs .nav-btn').forEach(btn => {
+		        btn.classList.toggle('active', btn.getAttribute('data-tab') === tabName);
+		    });
+		}
+
+		function hourOptions(selectedHour) {
+		    return Array.from({ length: 24 }, (_, h) => {
+		        const label = h.toString().padStart(2, '0') + ':00';
+		        return `<option value="${h}"${h === selectedHour ? ' selected' : ''}>${label}</option>`;
+		    }).join('');
+		}
+
+		function populatePlayTimeSelect() {
+		    const hourSel = document.getElementById('newPlayHour');
+		    const minSel  = document.getElementById('newPlayMinute');
+		    if (!hourSel || !minSel) return;
+		    const hourOpts = ['<option value="" disabled selected>HH</option>'];
+		    for (let h = 0; h < 24; h++) {
+		        hourOpts.push(`<option value="${h}">${h.toString().padStart(2, '0')}</option>`);
+		    }
+		    hourSel.innerHTML = hourOpts.join('');
+		    const minOpts = ['<option value="" disabled selected>MM</option>'];
+		    for (let m = 0; m < 60; m += 5) {
+		        minOpts.push(`<option value="${m}">${m.toString().padStart(2, '0')}</option>`);
+		    }
+		    minSel.innerHTML = minOpts.join('');
+		}
+
+		function populateHourSelects() {
+		    const auditSel   = document.getElementById('pref_scheduledAuditHour');
+		    const restartSel = document.getElementById('pref_scheduledRestartHour');
+		    const ah = fullSettingsPayload.scheduledAuditHour   ?? 2;
+		    const rh = fullSettingsPayload.scheduledRestartHour ?? 3;
+		    if (auditSel)   auditSel.innerHTML   = hourOptions(ah);
+		    if (restartSel) restartSel.innerHTML = hourOptions(rh);
+		}
+
 		// Handles programmatic unchecking and UI state rendering safely
+		function handleAuditToggle() {
+		    const check = document.getElementById('pref_scheduledSpeakerAudit');
+		    const sel   = document.getElementById('pref_scheduledAuditHour');
+		    if (check && sel) sel.disabled = !check.checked;
+		}
+
 		function handleScheduledRestartToggle() {
 		    const parentCheck = document.getElementById('pref_scheduledRestart');
-		    const childCheck = document.getElementById('pref_includeReboot');
+		    const childCheck  = document.getElementById('pref_includeReboot');
+		    const restartSel  = document.getElementById('pref_scheduledRestartHour');
 
 		    if (parentCheck && childCheck) {
 		        childCheck.disabled = !parentCheck.checked;
-		        if (!parentCheck.checked) {
-		            childCheck.checked = false;
-		        }
+		        if (!parentCheck.checked) childCheck.checked = false;
 		    }
+		    if (parentCheck && restartSel) restartSel.disabled = !parentCheck.checked;
 		}
 
 		// --- GLOBAL SETTINGS LOGIC ---
 		let currentSearchOrder = [];
-		let fullSettingsPayload = {}; // Hold the full JSON so we don't overwrite checkboxes
-		const SOURCE_NAMES = {
-		    'spotify': 'Spotify',
-		    'radio': 'Radio',
-		    'nas': 'Local NAS',
-		    'global': 'Global'
+		let fullSettingsPayload = {};
+
+		// Known local icons — these always win over MASS-provided icons
+		const KNOWN_LOCAL_ICONS = {
+		    'global':           null,
+		    'spotify':          '/images/spotify_icon.png',
+		    'tunein':           '/images/TuneIn_icon.png',
+		    'filesystem_local': '/images/nas_icon.png',
+		    'file':             '/images/nas_icon.png'
+		};
+
+		// Radio providers whose domain name doesn't contain the word "radio"
+		// Update this list as new radio-only providers are discovered in MASS
+		const RADIO_PROVIDER_DOMAINS = new Set(['tunein', 'siriusxm', 'somafm']);
+
+		function getSourceType(domain) {
+		    if (domain === 'global') return 'global';
+		    return (RADIO_PROVIDER_DOMAINS.has(domain) || domain.includes('radio')) ? 'radio' : 'music';
+		}
+
+		// Legacy key remapping (old synthetic keys → real MASS domain keys)
+		const LEGACY_KEY_MAP = {
+		    'radio': 'tunein',
+		    'nas':   'filesystem_local'
 		};
 
 		// 1. Fetch from Server
@@ -418,8 +564,18 @@
 		        if (res.ok) {
 		            fullSettingsPayload = await res.json();
 
-		            // Load Menu Order
-		            currentSearchOrder = fullSettingsPayload.searchMenuOrder || ['global', 'radio', 'nas', 'spotify'];
+		            // Load Menu Order — migrate legacy string array if server hasn't done it yet
+		            let raw = fullSettingsPayload.searchMenuOrder || [];
+		            if (raw.length > 0 && typeof raw[0] === 'string') {
+		                raw = raw.map(legacyKey => ({
+		                    key:        LEGACY_KEY_MAP[legacyKey] || legacyKey,
+		                    name:       { global: 'Global', radio: 'TuneIn Radio', nas: 'Local NAS', spotify: 'Spotify' }[legacyKey] || legacyKey,
+		                    icon:       KNOWN_LOCAL_ICONS[LEGACY_KEY_MAP[legacyKey] || legacyKey] || null,
+		                    enabled:    true,
+		                    sourceType: legacyKey === 'radio' ? 'radio' : legacyKey === 'global' ? 'global' : 'music'
+		                }));
+		            }
+		            currentSearchOrder = raw;
 		            renderSortableList();
 
 		            // Load Checkboxes
@@ -434,34 +590,58 @@
 		            subReboot.disabled = !fullSettingsPayload.scheduledRestart;
 		            document.getElementById('pref_bypassCloudEmulation').checked = fullSettingsPayload.bypassCloudEmulation === true;
 
+		            // Hour selects — populate after fullSettingsPayload is set
+		            populateHourSelects();
+		            const auditSel   = document.getElementById('pref_scheduledAuditHour');
+		            const restartSel = document.getElementById('pref_scheduledRestartHour');
+		            if (auditSel)   auditSel.disabled   = !fullSettingsPayload.scheduledSpeakerAudit;
+		            if (restartSel) restartSel.disabled = !fullSettingsPayload.scheduledRestart;
+
+		            // Re-render scheduled plays now that settings are loaded
+		            renderScheduledPlays();
 		        }
 		    } catch (e) {
 		        console.error("Failed to load settings from server", e);
 		    }
 		}
 
-		// Draw the drag-and-drop list
+		// Draw the sortable provider tab list
 		function renderSortableList() {
 		    const container = document.getElementById('sortable-list');
 		    container.style.flexDirection = 'row';
 		    container.style.flexWrap = 'wrap';
 
-		    container.innerHTML = currentSearchOrder.map((key, index) => `
-			<div style="display: flex; flex-direction: column; align-items: center; background: rgba(128,128,128,0.1); padding: 12px 2px; border-radius: 6px; border: 1px solid var(--border); flex: 1; min-width: 65px;">
-			<span style="color: var(--text); font-weight: bold; font-size: 0.85em; margin-bottom: 10px; white-space: nowrap;">${SOURCE_NAMES[key]}</span>
-			<div style="display: flex; gap: 4px; width: 100%; padding: 0 5px; box-sizing: border-box;">
-			<button class="btn-sm" style="flex: 1; padding: 5px 0; font-size: 0.8em;" onclick="moveItem(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.2"' : ''}>◀</button>
-			<button class="btn-sm" style="flex: 1; padding: 5px 0; font-size: 0.8em;" onclick="moveItem(${index}, 1)" ${index === currentSearchOrder.length - 1 ? 'disabled style="opacity:0.2"' : ''}>▶</button>
-			</div>
-			</div>
-			`).join('');
+		    container.innerHTML = currentSearchOrder.map((entry, index) => {
+		        const isGlobal = entry.key === 'global';
+		        const isHidden = !entry.enabled;
+		        const iconHtml = entry.key === 'global'
+		            ? `<span style="font-size:1.4em; line-height:1;">🌍</span>`
+		            : `<img src="${entry.icon || '/images/ma_icon.png'}" onerror="this.src='/images/ma_icon.png'" style="height:20px; width:auto; object-fit:contain;">`;
+
+		        return `
+			<div style="display: flex; flex-direction: column; align-items: center; background: ${isHidden ? 'rgba(128,128,128,0.05)' : 'rgba(128,128,128,0.1)'}; padding: 10px 4px 8px; border-radius: 6px; border: 1px solid ${isHidden ? 'rgba(128,128,128,0.2)' : 'var(--border)'}; flex: 1; min-width: 70px; opacity: ${isHidden ? '0.45' : '1'}; position: relative;">
+			    ${!isGlobal ? `<button onclick="toggleHideEntry(${index})" title="${isHidden ? 'Show on library page' : 'Hide from library page'}" style="position:absolute; top:4px; right:4px; background:none; border:none; cursor:pointer; font-size:0.75em; color:var(--text); opacity:0.5; padding:0; line-height:1;">${isHidden ? '👁' : '✕'}</button>` : ''}
+			    <div style="margin-bottom:6px;">${iconHtml}</div>
+			    <span style="color: var(--text); font-weight: bold; font-size: 0.78em; margin-bottom: 8px; white-space: nowrap; text-align:center; max-width: 75px; overflow: hidden; text-overflow: ellipsis; display: block;" title="${entry.name}">${entry.name}</span>
+			    <div style="display: flex; gap: 4px; width: 100%; padding: 0 4px; box-sizing: border-box;">
+			        <button class="btn-sm" style="flex: 1; padding: 4px 0; font-size: 0.8em;" onclick="moveItem(${index}, -1)" ${index === 0 ? 'disabled' : ''}>◀</button>
+			        <button class="btn-sm" style="flex: 1; padding: 4px 0; font-size: 0.8em;" onclick="moveItem(${index}, 1)" ${index === currentSearchOrder.length - 1 ? 'disabled' : ''}>▶</button>
+			    </div>
+			</div>`;
+		    }).join('');
 		}
 
 		function moveItem(index, direction) {
 		    const newIndex = index + direction;
+		    if (newIndex < 0 || newIndex >= currentSearchOrder.length) return;
 		    const temp = currentSearchOrder[index];
 		    currentSearchOrder[index] = currentSearchOrder[newIndex];
 		    currentSearchOrder[newIndex] = temp;
+		    renderSortableList();
+		}
+
+		function toggleHideEntry(index) {
+		    currentSearchOrder[index].enabled = !currentSearchOrder[index].enabled;
 		    renderSortableList();
 		}
 
@@ -471,16 +651,93 @@
 		    await pushSettingsToServer("✅ Menu order synchronized across all devices!");
 		}
 
+		// 3. Refresh provider tabs from Music Assistant
+		async function refreshProvidersFromMass() {
+		    const btn = event.currentTarget;
+		    const orig = btn.innerHTML;
+		    btn.innerHTML = '⏳ Fetching...';
+		    btn.disabled = true;
+
+		    try {
+		        const res = await fetch('/api/manager/providers');
+		        if (!res.ok) throw new Error('Server error');
+		        const massProviders = await res.json();
+
+		        const added = [];
+		        const updated = [];
+		        const removed = [];
+
+		        // Find entries in current list that are no longer in MASS (excluding global)
+		        currentSearchOrder.forEach(entry => {
+		            if (entry.key === 'global') return;
+		            const stillExists = massProviders.some(p => p.domain === entry.key);
+		            if (!stillExists) removed.push(entry.name);
+		        });
+
+		        // Remove deleted providers
+		        currentSearchOrder = currentSearchOrder.filter(entry => {
+		            if (entry.key === 'global') return true;
+		            return massProviders.some(p => p.domain === entry.key);
+		        });
+
+		        // Add new or update existing
+		        massProviders.forEach(p => {
+		            const existingIndex = currentSearchOrder.findIndex(e => e.key === p.domain);
+		            const localIcon = KNOWN_LOCAL_ICONS[p.domain] || null;
+		            const resolvedIcon = localIcon || p.icon || null;
+
+		            if (existingIndex >= 0) {
+		                // Update name and icon only — preserve enabled state and position
+		                const prev = currentSearchOrder[existingIndex];
+		                if (prev.name !== p.name || prev.icon !== resolvedIcon) {
+		                    currentSearchOrder[existingIndex].name = p.name;
+		                    currentSearchOrder[existingIndex].icon = resolvedIcon;
+		                    updated.push(p.name);
+		                }
+		            } else {
+		                // New provider — append to far right
+		                currentSearchOrder.push({
+		                    key:        p.domain,
+		                    name:       p.name,
+		                    icon:       resolvedIcon,
+		                    enabled:    true,
+		                    sourceType: getSourceType(p.domain)
+		                });
+		                added.push(p.name);
+		            }
+		        });
+
+		        renderSortableList();
+
+		        // Build summary
+		        const parts = [];
+		        if (added.length)   parts.push(`✅ Added: ${added.join(', ')}`);
+		        if (updated.length) parts.push(`🔄 Updated: ${updated.join(', ')}`);
+		        if (removed.length) parts.push(`🗑️ Removed: ${removed.join(', ')}`);
+		        const summary = parts.length ? parts.join('\n') : 'No changes — your tab list is already up to date.';
+
+		        alert(`MASS Provider Sync Complete\n\n${summary}\n\nClick "💾 Save Layout" to apply these changes.`);
+
+		    } catch (e) {
+		        alert('❌ Could not reach Music Assistant. Check that MASS is running and try again.');
+		    }
+
+		    btn.innerHTML = orig;
+		    btn.disabled = false;
+		}
+
 		// 3. Save Checkboxes
 		async function savePreferences() {
 		    fullSettingsPayload.autoResumePreset = document.getElementById('pref_autoResume').checked;
 		    fullSettingsPayload.autoRestartMass = document.getElementById('pref_autoRestart').checked;
 		    fullSettingsPayload.autoSyncVolume = document.getElementById('pref_autoSync').checked;
 		    fullSettingsPayload.mobileAutoSortSpeakers = document.getElementById('pref_mobileAutoSortSpeakers').checked;
-		    fullSettingsPayload.scheduledSpeakerAudit = document.getElementById('pref_scheduledSpeakerAudit').checked;
-		    fullSettingsPayload.scheduledRestart = document.getElementById('pref_scheduledRestart').checked;
-		    fullSettingsPayload.includeReboot = document.getElementById('pref_includeReboot').checked;
-		    fullSettingsPayload.bypassCloudEmulation = document.getElementById('pref_bypassCloudEmulation').checked;
+		    fullSettingsPayload.scheduledSpeakerAudit  = document.getElementById('pref_scheduledSpeakerAudit').checked;
+		    fullSettingsPayload.scheduledAuditHour    = parseInt(document.getElementById('pref_scheduledAuditHour').value, 10);
+		    fullSettingsPayload.scheduledRestart      = document.getElementById('pref_scheduledRestart').checked;
+		    fullSettingsPayload.scheduledRestartHour  = parseInt(document.getElementById('pref_scheduledRestartHour').value, 10);
+		    fullSettingsPayload.includeReboot         = document.getElementById('pref_includeReboot').checked;
+		    fullSettingsPayload.bypassCloudEmulation  = document.getElementById('pref_bypassCloudEmulation').checked;
 		    await pushSettingsToServer("✅ Preferences saved successfully!");
 		}
 
@@ -522,13 +779,17 @@
 		window.addEventListener('DOMContentLoaded', () => {
 		    loadConfig();
 		    syncDebugToggle();
+		    populatePlayTimeSelect();
+		    // Init Dark Mode checkbox from localStorage
+		    const darkCheck = document.getElementById('pref_darkMode');
+		    if (darkCheck) darkCheck.checked = (localStorage.getItem('theme') !== 'light');
 		    //fetchLogs(); only needed if log view defaults to open
 		});
 
-		function toggleTheme() {
-		    document.body.classList.toggle('light-mode');
-		    const isLight = document.body.classList.contains('light-mode');
-		    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+		function toggleThemeFromPref(checkbox) {
+		    const isDark = checkbox.checked;
+		    document.body.classList.toggle('light-mode', !isDark);
+		    localStorage.setItem('theme', isDark ? 'dark' : 'light');
 		}
 
 		if (localStorage.getItem('theme') === 'light')
@@ -649,6 +910,129 @@
 		    }
 		}
 
+		// =====================================================================
+		// SCHEDULED PLAY — CRUD
+		// =====================================================================
+		let scheduledPlaysDevices = [];
+
+		function initScheduledPlays(devices) {
+		    scheduledPlaysDevices = Array.isArray(devices) ? devices.filter(d => d.online) : [];
+		    renderScheduledPlays();
+		    updateNewPlaySpeakerOptions();
+		}
+
+		function renderScheduledPlays() {
+		    const list   = document.getElementById('scheduledPlaysList');
+		    const empty  = document.getElementById('scheduledPlaysEmpty');
+		    const badge  = document.getElementById('scheduledPlayCount');
+		    const plays  = Array.isArray(fullSettingsPayload.scheduledPlays) ? fullSettingsPayload.scheduledPlays : [];
+		    const usedIps = new Set(plays.map(p => p.speakerIp));
+
+		    if (badge) badge.textContent = `${plays.length} Schedule${plays.length !== 1 ? 's' : ''}`;
+		    if (!list) return;
+
+		    // Clear existing rows (keep the empty placeholder node)
+		    [...list.querySelectorAll('li.sp-row')].forEach(el => el.remove());
+
+		    if (plays.length === 0) {
+		        if (empty) empty.style.display = '';
+		        return;
+		    }
+		    if (empty) empty.style.display = 'none';
+
+		    plays.forEach((play, idx) => {
+		        const li = document.createElement('li');
+		        li.className = 'sp-row';
+		        li.style.cssText = 'display:flex; align-items:center; gap:10px; padding:10px; background:var(--input-bg); border-bottom:1px solid var(--border); flex-wrap:wrap;';
+
+		        // Speaker label
+		        const dev = scheduledPlaysDevices.find(d => d.ip === play.speakerIp);
+		        const spLabel = dev ? `${dev.name} (${play.speakerIp})` : play.speakerIp;
+
+		        const h = play.hour ?? 0;
+		        const m = play.minute ?? 0;
+		        const ampm = h < 12 ? 'AM' : 'PM';
+		        const h12  = h % 12 || 12;
+		        const timeLabel = `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+
+		        li.innerHTML = `
+		            <span style="color:var(--text); font-weight:bold; white-space:nowrap;">${timeLabel} — Preset ${play.preset} — ${spLabel}</span>
+		            <span style="flex-grow:1;"></span>
+		            <button onclick="removeScheduledPlay(${idx})" style="background:var(--danger); color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">✕</button>
+		        `;
+		        list.appendChild(li);
+		    });
+
+		    updateNewPlaySpeakerOptions();
+		}
+
+		function updateNewPlaySpeakerOptions() {
+		    const sel    = document.getElementById('newPlaySpeaker');
+		    const addBtn = document.getElementById('addScheduledPlayBtn');
+		    if (!sel) return;
+
+		    const plays   = Array.isArray(fullSettingsPayload.scheduledPlays) ? fullSettingsPayload.scheduledPlays : [];
+		    const usedIps = new Set(plays.map(p => p.speakerIp));
+
+		    const available = scheduledPlaysDevices.filter(d => !usedIps.has(d.ip));
+		    sel.innerHTML = '<option value="" disabled selected>Select speaker...</option>' +
+		        scheduledPlaysDevices.map(d => {
+		            const used = usedIps.has(d.ip);
+		            return `<option value="${d.ip}" ${used ? 'disabled style="color:var(--text-secondary);"' : ''}>${d.name} (${d.ip})${used ? ' — Scheduled' : ''}</option>`;
+		        }).join('');
+
+		    if (addBtn) addBtn.disabled = available.length === 0;
+		}
+
+		async function addScheduledPlay() {
+		    const hourSel    = document.getElementById('newPlayHour');
+		    const minSel     = document.getElementById('newPlayMinute');
+		    const speakerSel = document.getElementById('newPlaySpeaker');
+		    const presetSel  = document.getElementById('newPlayPreset');
+
+		    const hVal   = hourSel?.value;
+		    const mVal   = minSel?.value;
+		    const ip     = speakerSel?.value;
+		    const preset = parseInt(presetSel?.value || '1', 10);
+
+		    if (hVal === '' || hVal == null || mVal === '' || mVal == null || !ip) return alert('Please select a time and a speaker.');
+
+		    const h = parseInt(hVal, 10);
+		    const m = parseInt(mVal, 10);
+
+		    if (!fullSettingsPayload.scheduledPlays) fullSettingsPayload.scheduledPlays = [];
+		    fullSettingsPayload.scheduledPlays.push({ speakerIp: ip, preset, hour: h, minute: m });
+
+		    // Reset add-row
+		    hourSel.selectedIndex = 0;
+		    minSel.selectedIndex  = 0;
+		    speakerSel.value = '';
+
+		    renderScheduledPlays();
+		    await saveScheduledPlays();
+		}
+
+		async function removeScheduledPlay(index) {
+		    if (!Array.isArray(fullSettingsPayload.scheduledPlays)) return;
+		    fullSettingsPayload.scheduledPlays.splice(index, 1);
+		    renderScheduledPlays();
+		    await saveScheduledPlays();
+		}
+
+async function saveScheduledPlays(silent = false) {
+		    if (silent) {
+		        // Fire-and-forget without alert
+		        fetch('/api/admin/settings', {
+		            method: 'POST',
+		            headers: { 'Content-Type': 'application/json' },
+		            body: JSON.stringify(fullSettingsPayload)
+		        }).catch(e => console.error('[ScheduledPlay] Save failed:', e.message));
+		    } else {
+		        await pushSettingsToServer('✅ Scheduled plays saved.');
+		    }
+		}
+		// =====================================================================
+
 		async function loadTools() {
 		    try {
 		        const statusRes = await fetch('/api/status');
@@ -674,11 +1058,13 @@
 
 		        // ---> BOOT STEREO UI WITH SHARED DATA
 		        initStereoUI(devices);
+		        initScheduledPlays(devices);
 
 		    } catch (e) {
 		        console.error("Failed to load tools / status", e);
 		        // Still boot the stereo UI with an empty array so dummies inject
 		        initStereoUI([]);
+		        initScheduledPlays([]);
 		    }
 		}
 

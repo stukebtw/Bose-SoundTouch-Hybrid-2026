@@ -3,12 +3,14 @@ node_modules/
 
 # --- Secrets & Private Configs ---
 .env
+claude.md
 
 # --- Junk & Backups ---
 testscripts/
 .DS_Store
 Thumbs.db
 misc/
+Docs/
 
 # --- Logs ---
 logs/

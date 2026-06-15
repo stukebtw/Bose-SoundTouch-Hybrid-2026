@@ -15,15 +15,16 @@
 
 <div class="container">
   <div class="global-nav">
-    <div style="font-weight:700; color:var(--title-color); font-size:1.1em; display:flex; align-items:center; gap:12px; white-space:nowrap; min-width:250px;">
+    <div class="header-brand">
 		<img src="images/hybrid_icon.png" style="height:32px; width:auto;" alt="Logo">
 		Bose SoundTouch Hybrid
 	</div>
     
 	<div class="nav-center-group">
-        <div class="global-link" onclick="window.location.href='/control.html'" style="cursor:pointer;">Remote Control</div>
-        <div class="global-link active" onclick="window.location.href='/manager.html'" style="cursor:pointer;">Library Manager</div>
-        <div class="global-link" onclick="window.location.href='/admin.html'" style="cursor:pointer;">Speaker Admin</div>
+        <div class="global-link" onclick="window.location.href='/control.html'">Remote Control</div>
+        <div class="global-link active" onclick="window.location.href='/manager.html'">Library Manager</div>
+        <div class="global-link" onclick="window.location.href='/admin.html'">Speaker Admin</div>
+        <div class="global-link nav-hide-mobile" onclick="window.location.href='/tools.html'">System Tools</div>
     </div>
     
     <div class="speaker-selector-container">
@@ -88,7 +89,9 @@
             <div class="filter-pill fav-pill" onclick="setFavFilter('artist')">Artists</div>
             <div class="filter-pill fav-pill" onclick="setFavFilter('album')">Albums</div>
             <div class="filter-pill fav-pill" onclick="setFavFilter('track')">Tracks</div>
-            <div class="filter-pill fav-pill" onclick="setFavFilter('radio')">Stations</div>
+            <div class="filter-pill fav-pill" onclick="setFavFilter('radio')">Radio</div>
+            <div class="filter-pill fav-pill" onclick="setFavFilter('podcast')">Podcasts</div>
+            <div class="filter-pill fav-pill" onclick="setFavFilter('audiobook')">Audiobooks</div>
             
             <select id="fav-provider-filter" class="mini-select" style="max-width: 140px; background-color: var(--bg);" onchange="loadLibrary()">
                 <option value="all">All Providers</option>
@@ -124,7 +127,9 @@
         <div class="filter-pill" onclick="setFilter('artist')">Artists</div>
         <div class="filter-pill" onclick="setFilter('album')">Albums</div>
         <div class="filter-pill" onclick="setFilter('track')">Tracks</div>
-		<div class="filter-pill" id="filter-stations" onclick="setFilter('radio')">Stations</div>
+		<div class="filter-pill" id="filter-radio" onclick="setFilter('radio')" style="display:none">Radio</div>
+        <div class="filter-pill" id="filter-podcast" onclick="setFilter('podcast')" style="display:none">Podcasts</div>
+        <div class="filter-pill" id="filter-audiobook" onclick="setFilter('audiobook')" style="display:none">Audiobooks</div>
         <div class="filter-pill" onclick="setFilter('all')">All</div>
 		<select id="provider-filter" class="mini-select" style="margin-left:auto; display:none; max-width:160px; background-color:var(--card);" onchange="doSearch()">
             <option value="all">All Providers</option>
@@ -234,14 +239,14 @@
   // State management for the current view and search filters
   let globalProviders = [];
   let state = {
-      source: 'spotify',
+      source: 'global',
       filter: 'playlist',
       tab: 'library',
       favFilter: 'all'
   };
   let selectedUuid = null;
   let npInterval = null;
-  let currentSearchOrder = ['global', 'radio', 'nas', 'spotify']; // <-- ADD THIS DEFAULT
+  let currentSearchOrder = []; // populated from settings on load
 
   // --- THEME MANAGEMENT ---
   // Applies the theme immediately to prevent flash of unstyled content
@@ -259,13 +264,26 @@
           applyTheme();
   });
 
+  // Legacy key remapping for any installs where migration hasn't run yet
+  const LEGACY_KEY_MAP = { 'radio': 'tunein', 'nas': 'filesystem_local' };
+
   // --- FETCH GLOBAL SETTINGS ---
   async function loadUserPreferences() {
       try {
-          // Uses existing api() wrapper to safely fetch settings
           const settings = await api('/api/admin/settings');
-          if (settings && settings.searchMenuOrder && Array.isArray(settings.searchMenuOrder)) {
-              currentSearchOrder = settings.searchMenuOrder;
+          if (settings && Array.isArray(settings.searchMenuOrder) && settings.searchMenuOrder.length > 0) {
+              let raw = settings.searchMenuOrder;
+              // Defensive: migrate legacy string array if server hasn't converted it yet
+              if (typeof raw[0] === 'string') {
+                  raw = raw.map(legacyKey => ({
+                      key:        LEGACY_KEY_MAP[legacyKey] || legacyKey,
+                      name:       { global: 'Global', radio: 'TuneIn Radio', nas: 'Local NAS', spotify: 'Spotify' }[legacyKey] || legacyKey,
+                      icon:       { spotify: '/images/spotify_icon.png', radio: '/images/TuneIn_icon.png', nas: '/images/nas_icon.png' }[legacyKey] || null,
+                      enabled:    true,
+                      sourceType: legacyKey === 'radio' ? 'radio' : legacyKey === 'global' ? 'global' : 'music'
+                  }));
+              }
+              currentSearchOrder = raw;
           }
       } catch (e) {
           console.error("Failed to load global search order from server. Using defaults.", e);
@@ -306,30 +324,22 @@
   }
 
   // --- DYNAMIC SEARCH MENU LOGIC ---
-  const SOURCE_BUTTON_TEMPLATES = {
-      'spotify': `<button class="source-btn" onclick="setSource('spotify')"><img src="images/spotify_icon.png" alt="Spotify"> Spotify</button>`,
-      'radio': `<button class="source-btn" onclick="setSource('radio')"><img src="images/TuneIn_icon.png" alt="Radio"> Radio</button>`,
-      'nas': `<button class="source-btn" onclick="setSource('nas')"><img src="images/nas_icon.png" alt="NAS"> Local NAS</button>`,
-      'global': `<button class="source-btn" onclick="setSource('global')"><span style="font-size:1.2em;">🌍</span> Global</button>`
-  };
-
   function buildSearchMenu() {
       const container = document.getElementById('dynamic-source-row');
-      let html = '';
 
-      // Build the HTML string based on the server-provided array order
-      currentSearchOrder.forEach(sourceKey => {
-          if (SOURCE_BUTTON_TEMPLATES[sourceKey]) {
-              html += SOURCE_BUTTON_TEMPLATES[sourceKey];
-          }
-      });
+      // Only render enabled tabs
+      const visibleTabs = currentSearchOrder.filter(e => e.enabled !== false);
 
-      // Inject it into the page
-      container.innerHTML = html;
+      container.innerHTML = visibleTabs.map(entry => {
+          const iconHtml = entry.key === 'global'
+              ? `<span style="font-size:1.2em;">🌍</span>`
+              : `<img src="${entry.icon || '/images/ma_icon.png'}" alt="${entry.name}" onerror="this.src='/images/ma_icon.png'" style="height:16px; width:auto; object-fit:contain;">`;
+          return `<button class="source-btn" onclick="setSource('${entry.key}')">${iconHtml} ${entry.name}</button>`;
+      }).join('');
 
-      // Automatically highlight the first item in the list
-      if (currentSearchOrder.length > 0) {
-          setSource(currentSearchOrder[0]);
+      // Activate the first visible tab
+      if (visibleTabs.length > 0) {
+          setSource(visibleTabs[0].key);
       }
   }
 
@@ -722,7 +732,7 @@
 		// IF HISTORY (-1): Show instant Save and Delete
       if (item.slot === -1) {
           btns = `<button class="btn-sm" onclick="saveToLibraryDirect('${item.uuid}')">💾 Save to Library</button>
-                <button class="btn-sm action-delete" onclick="deleteItem('${item.uuid}', true)" title="Delete Stream" style="color: var(--danger); font-size: 1.2em; font-weight: bold;">✖</button>`;
+                <button class="btn-sm action-delete" onclick="deleteItem('${item.uuid}', true)" title="Delete Stream" style="color: var(--danger); font-size: 0.8em; font-weight: bold;">✖</button>`;
       }
       // IF NORMAL: Show Play, plus Edit/Save
       else {
@@ -731,11 +741,11 @@
               if (item.slot > 0) {
                   // Preset: Edit button + Uniform Red X
                   btns += ` <button class="btn-sm" onclick="openModal(${safeItem})">✎ Edit</button>
-            <button class="btn-sm action-delete" onclick="deleteItem('${item.uuid}')" title="Clear Preset" style="color: var(--danger); font-size: 1.2em; font-weight: bold;">✖</button>`;
+            <button class="btn-sm action-delete" onclick="deleteItem('${item.uuid}')" title="Clear Preset" style="color: var(--danger); font-size: 0.8em; font-weight: bold;">✖</button>`;
               } else {
                   // Favorite: Edit button + Uniform Red X
                   btns += ` <button class="btn-sm" onclick="openModal(${safeItem})">✎ Edit</button>
-            <button class="btn-sm action-delete" onclick="deleteItem('${item.uuid}')" title="Delete Favorite" style="color: var(--danger); font-size: 1.2em; font-weight: bold;">✖</button>`;
+            <button class="btn-sm action-delete" onclick="deleteItem('${item.uuid}')" title="Delete Favorite" style="color: var(--danger); font-size: 0.8em; font-weight: bold;">✖</button>`;
               }
           } else if (allowSave) {
               btns += ` <button class="btn-sm" onclick="openModal(${safeItem})">💾 Save</button>`;
@@ -761,39 +771,40 @@
       document.getElementById('search-results').innerHTML = '';
       document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active-spotify', 'active-radio', 'active-nas', 'active-global'));
 
-      const map = {
-          spotify: 'active-spotify',
-          radio: 'active-radio',
-          nas: 'active-nas',
-          global: 'active-global'
-      };
       const activeBtn = document.querySelector(`.source-btn[onclick="setSource('${s}')"]`);
-      if (activeBtn)
-          activeBtn.classList.add(map[s]);
+      if (activeBtn) {
+          // Map sourceType to a CSS active class; unknown music providers use active-nas styling
+          const entry = currentSearchOrder.find(e => e.key === s);
+          const sourceType = entry ? entry.sourceType : 'music';
+          const cssClass = sourceType === 'global' ? 'active-global' : sourceType === 'radio' ? 'active-radio' : 'active-nas';
+          activeBtn.classList.add(cssClass);
+      }
 
       const filterRow = document.getElementById('filter-row');
       const searchInput = document.getElementById('q');
       const providerSelect = document.getElementById('provider-filter');
+      const entry = currentSearchOrder.find(e => e.key === s);
+      const sourceType = entry ? entry.sourceType : 'music';
 
-      if (s === 'radio') {
+      if (sourceType === 'radio') {
           setFilter('all');
           filterRow.style.display = 'none';
       } else {
           filterRow.style.display = 'flex';
-          if (s === 'nas') {
+          if (sourceType === 'music') {
               setFilter('all');
               searchInput.value = "";
           }
 
-          const stationPill = document.getElementById('filter-stations');
-          if (stationPill) {
-              stationPill.style.display = (s === 'global') ? 'block' : 'none';
-          }
+          const isGlobal = (sourceType === 'global');
+          ['filter-radio', 'filter-podcast', 'filter-audiobook'].forEach(id => {
+              const pill = document.getElementById(id);
+              if (pill) pill.style.display = isGlobal ? 'block' : 'none';
+          });
 
-          // --- Toggle Search Provider Dropdown ---
           if (providerSelect) {
-              providerSelect.style.display = (s === 'global') ? 'inline-block' : 'none';
-              if (s !== 'global')
+              providerSelect.style.display = (sourceType === 'global') ? 'inline-block' : 'none';
+              if (sourceType !== 'global')
                   providerSelect.value = 'all';
           }
       }
@@ -822,15 +833,19 @@
 
       box.innerHTML = '<div style="padding:20px; color:#888">Searching MASS...</div>';
 
+      const entry = currentSearchOrder.find(e => e.key === state.source);
+      const sourceType = entry ? entry.sourceType : 'music';
+
       const data = await api('/api/manager/search', {
           method: 'POST',
           body: JSON.stringify({
               query: q,
               source: state.source,
+              sourceType: sourceType,
               type: state.filter,
               limit: limit,
               providerFilter: providerFilter
-          }) // <-- NEW: Added to paylo
+          })
       });
 
       if (data.error) {

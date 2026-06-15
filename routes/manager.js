@@ -210,7 +210,21 @@ function buildSubtitle(i, cat, showType = false) {
         let artist = getName(i.artist) || getName(i.artists?.[0]) || getName(i.metadata?.artist);
         if (artist) parts.push(artist);
     }
-    
+    // 4. PODCAST (show-level)
+    else if (cat === 'podcast') {
+        if (i.publisher) parts.push(i.publisher);
+    }
+    // 5. PODCAST EPISODE
+    else if (cat === 'podcast_episode') {
+        const show = i.podcast?.name || (typeof i.podcast === 'string' ? i.podcast : null);
+        if (show) parts.push(show);
+    }
+    // 6. AUDIOBOOK
+    else if (cat === 'audiobook') {
+        const author = Array.isArray(i.authors) ? i.authors[0] : i.authors;
+        if (author) parts.push(author);
+    }
+
     // Finally, append the provider to the end
     parts.push(pName);
     return parts.join(' • ');
@@ -218,9 +232,9 @@ function buildSubtitle(i, cat, showType = false) {
 
 
 // --- HELPER: SEARCH FILTER ---
-// Determines if an item belongs to the selected source (Spotify, Radio, or NAS/Local).
+// Determines if a search result item belongs to the requested provider domain.
+// activeSource is either 'global' (pass all) or a MASS provider domain key (e.g. 'spotify', 'tunein', 'filesystem_local').
 function isSourceMatch(item, activeSource) {
-    // NEW: If Global is selected, bypass all filters and let everything through!
     if (activeSource === 'global')
         return true;
 
@@ -228,17 +242,7 @@ function isSourceMatch(item, activeSource) {
     const providers = (item.provider_mappings || []).map(p => (p.provider_domain || '').split('--')[0]);
     const mainProvider = (item.provider || '').split('--')[0];
 
-    if (activeSource === 'spotify') {
-        return providers.includes('spotify') || mainProvider === 'spotify';
-    }
-    if (activeSource === 'radio') {
-        return true; 
-    }
-    if (activeSource === 'nas') {
-        // NAS includes everything that IS NOT Spotify or Radio
-        return !providers.includes('spotify') && mainProvider !== 'spotify' && mainProvider !== 'radio';
-    }
-    return false;
+    return providers.includes(activeSource) || mainProvider === activeSource || mainProvider.startsWith(activeSource + '--');
 }
 
 // --- PROXY ENDPOINT ---
@@ -316,7 +320,8 @@ router.get('/manager/providers', async(req, res) => {
         
         const results = musicProviders.map(p => ({
             domain: p.domain,
-            name: p.name || p.domain
+            name: p.name || p.domain,
+            icon: p.icon || null
         }));
         
         if (results.length > 0) {
@@ -360,23 +365,25 @@ router.get('/manager/providers', async(req, res) => {
 // --- 1. SEARCH ENDPOINT ---
 // Performs a unified search across Music Assistant providers.
 router.post('/manager/search', async(req, res) => {
-    let { query, source, type, limit, providerFilter } = req.body;
+    let { query, source, sourceType, type, limit, providerFilter } = req.body;
     let searchLimit = parseInt(limit) || 25;
     if (searchLimit > 100)
         searchLimit = 100;
     if (!query || query.trim() === "")
         return res.json([]);
 
+    const isRadioSource = (source === 'radio' || sourceType === 'radio');
+
     // Force 'all' search for radio to ensure we catch stations
-    if (source === 'radio')
+    if (isRadioSource)
         type = 'all';
 
     try {
         let mediaTypes = ["artist", "album", "track", "playlist"];
-        if (source === 'radio')
+        if (isRadioSource)
             mediaTypes = ["radio"];
         if (source === 'global')
-            mediaTypes.push("radio"); // Add radio to Global searches
+            mediaTypes.push("radio", "podcast", "podcast_episode", "audiobook");
 
         // 1. Fetch Data
         const data = await massRequest("music/search", {
@@ -450,7 +457,7 @@ router.post('/manager/search', async(req, res) => {
                     i.artists.forEach(a => content += " " + safeStr(a.name || a));
                 }
 
-                if ((type === 'all' || type === cat) && content.includes(qLower)) {
+                if ((type === 'all' || type === cat || (type === 'podcast' && cat === 'podcast_episode')) && content.includes(qLower)) {
                     categoryItems.push({
                         uri: i.uri,
                         name: utils.scrubText(i.name),
@@ -469,7 +476,10 @@ router.post('/manager/search', async(req, res) => {
                         artist: 'Artists',
                         album: 'Albums',
                         track: 'Tracks',
-                        radio: 'Radio'
+                        radio: 'Radio',
+                        podcast: 'Podcasts',
+                        podcast_episode: 'Podcast Episodes',
+                        audiobook: 'Audiobooks'
                     };
                     results.push({
                         type: 'HEADER',
@@ -480,15 +490,19 @@ router.post('/manager/search', async(req, res) => {
             }
         };
 
-        if (source === 'radio') {
+        if (isRadioSource) {
             processList(data.radio, 'radio');
         } else {
             processList(data.playlists, 'playlist');
             processList(data.artists, 'artist');
             processList(data.albums, 'album');
             processList(data.tracks, 'track');
-            if (source === 'global')
-                processList(data.radio, 'radio'); // Process radio items if Global
+            if (source === 'global') {
+                processList(data.radio, 'radio');
+                processList(data.podcasts, 'podcast');
+                processList(data.podcast_episodes, 'podcast_episode');
+                processList(data.audiobooks, 'audiobook');
+            }
         }
 
         res.json(results);

@@ -178,28 +178,27 @@ function resolveMetadataAndStatus(nativeData, massData, source, isPausedByShadow
 // =========================================================
 // --- HELPER: BEHAVIOR 4 (AUTO-RESUME PRESET) ---
 // =========================================================
-function handleWakeMemory(ip, isStandby, activePreset, finalPlayStatus) {
+function handleWakeMemory(ip, isStandby, activePreset, finalPlayStatus, source) {
     if (!getAutoResumeSetting()) return; // Check settings.json
 
     // 1. RECORDING & CANCELLATION
     if (!isStandby) {
-        
-        // 🌟 THE FIX: If the speaker natively starts playing a preset or stream within the 2.5s window,
-        // OR if there is an active UI lock (EXPECTATION) indicating the user JUST clicked something...
         const userIsLoadingSomething = EXPECTATIONS[ip] && (EXPECTATIONS[ip].type === 'PRESET' || EXPECTATIONS[ip].type === 'TRACK');
+        // Guard against stale-cache contradictions: INVALID_SOURCE or Ready combined with a
+        // leftover PLAY_STATE from the previous stream is not real playback — don't wipe memory on it.
+        const isGenuineStream = finalPlayStatus === 'PLAY_STATE' && source !== 'INVALID_SOURCE' && source !== 'Ready' && source;
 
-        if (AUTO_RESUME_TIMERS[ip] && (activePreset > 0 || finalPlayStatus === 'PLAY_STATE' || userIsLoadingSomething)) {
+        if (AUTO_RESUME_TIMERS[ip] && (activePreset > 0 || isGenuineStream || userIsLoadingSomething)) {
             console.log(`[DeviceState] 🛑 Auto-Resume Cancelled: Speaker natively loaded a source or user action detected.`);
             clearTimeout(AUTO_RESUME_TIMERS[ip]);
             AUTO_RESUME_TIMERS[ip] = null;
         }
 
         if (activePreset > 0) {
-            // Playing a preset -> Remember it for the next boot
             WAKE_MEMORY[ip] = activePreset;
-        } else if (finalPlayStatus === 'PLAY_STATE') {
-            // Playing generic Wi-Fi stream -> Forget memory so it boots to vanilla Wi-Fi
-            delete WAKE_MEMORY[ip]; 
+        } else if (isGenuineStream) {
+            // Playing genuine non-preset stream -> forget memory so it boots to vanilla Wi-Fi
+            delete WAKE_MEMORY[ip];
         }
     }
     
@@ -527,14 +526,22 @@ async function processSettledState(ip) {
         let finalPlayStatus = (rawStatus === 'BUFFERING_STATE') ? 'PLAY_STATE' : rawStatus;
         let finalProvider = "";
 
-        // --- RESTORED: Standby Preset Wipe ---
+		// --- RESTORED: Standby Preset Wipe ---
         if (isStandby) {
-            mass.setPresetMemory(ip, 0);
-            delete LAST_METADATA[ip];
-            if (LAST_VALID_STATE[ip] && LAST_VALID_STATE[ip].isStandby === false) {
-			// The 1-2 Punch: Stop the active stream, then clear MA queue completely 
-                mass.stop(ip).catch(() => {});
-                mass.clearQueue(ip).catch(() => {});
+            // 🛑 THE RACE CONDITION FIX (Preset Wake-Up)
+            // If the user wakes the speaker by pressing a preset, the HTTP API registers the
+            // preset lock INSTANTLY, but the hardware still reports "STANDBY" for another 2 seconds.
+            // We must NOT wipe the preset memory if a PRESET expectation is actively locked!
+            const isWakingViaPreset = EXPECTATIONS[ip] && EXPECTATIONS[ip].type === 'PRESET';
+            
+            if (!isWakingViaPreset) {
+                mass.setPresetMemory(ip, 0);
+                delete LAST_METADATA[ip];
+                if (LAST_VALID_STATE[ip] && LAST_VALID_STATE[ip].isStandby === false) {
+                    // The 1-2 Punch: Stop the active stream, then clear MA queue completely 
+                    mass.stop(ip).catch(() => {});
+                    mass.clearQueue(ip).catch(() => {});
+                }
             }
 
             finalPlayStatus = 'STOP_STATE'; // Forces play button to gray
@@ -658,7 +665,7 @@ async function processSettledState(ip) {
     }
 	
 	// --- DELEGATE BEHAVIOR 4 LOGIC ---
-    handleWakeMemory(ip, isStandby, activePreset, finalPlayStatus);	
+    handleWakeMemory(ip, isStandby, activePreset, finalPlayStatus, source);
 
     let artPlaceholder = 'art-blank';
     if (isStandby) {

@@ -1,8 +1,9 @@
 // ============================================================================
 // PHASE 1: IMPORTS & CONSTANTS
 // ============================================================================
-const CURRENT_VERSION = "v3.5.5";
+const CURRENT_VERSION = "v3.6";
 const ENV_SCHEMA_VERSION = "v3.5"; 
+const minReq = [2, 9, 1]; //MASS VERSION
 let UPDATE_CACHED_DATA = { updateAvailable: false, current: CURRENT_VERSION };
 const express = require('express');
 const fs = require('fs');
@@ -30,7 +31,7 @@ if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
-const MAX_LOG_LINES = 500; 
+const MAX_LOG_LINES = 1000; 
 const logBuffer = [];
 const originalLog = console.log;
 const originalError = console.error;
@@ -126,21 +127,61 @@ if (!fs.existsSync(libraryPath)) {
 // ⚙️ AUTO-GENERATE DEFAULT SETTINGS
 // ---------------------------------------------------------
 const settingsPath = path.join(USER_ROOT, 'settings.json');
+
+const DEFAULT_SEARCH_MENU_ORDER = [
+    { key: 'global',           name: 'Global',       icon: null,                       enabled: true, sourceType: 'global' },
+    { key: 'tunein',           name: 'TuneIn Radio', icon: '/images/TuneIn_icon.png',  enabled: true, sourceType: 'radio'  },
+    { key: 'filesystem_local', name: 'Local NAS',    icon: '/images/nas_icon.png',     enabled: true, sourceType: 'music'  }
+];
+
+const LEGACY_SEARCH_MENU_MAP = {
+    'global': { name: 'Global',       icon: null,                       sourceType: 'global' },
+    'radio':  { name: 'TuneIn Radio', icon: '/images/TuneIn_icon.png',  sourceType: 'radio',  key: 'tunein'           },
+    'nas':    { name: 'Local NAS',    icon: '/images/nas_icon.png',     sourceType: 'music',  key: 'filesystem_local' },
+    'spotify':{ name: 'Spotify',      icon: '/images/spotify_icon.png', sourceType: 'music'   }
+};
+
 if (!fs.existsSync(settingsPath)) {
     console.log(`[Boot] settings.json not found. Generating default preferences...`);
     const defaultSettings = {
         autoResumePreset: false,
         autoRestartMass: false,
         autoSyncVolume: false,
-        mobileAutoSortSpeakers: true,  
-        scheduledSpeakerAudit: true,   
+        mobileAutoSortSpeakers: true,
+        scheduledSpeakerAudit: true,
+        scheduledAuditHour: 2,
         scheduledRestart: false,
+        scheduledRestartHour: 3,
         includeReboot: false,
-        searchMenuOrder: ['global', 'radio', 'nas', 'spotify']
+        scheduledPlays: [],
+        bypassCloudEmulation: false,
+        searchMenuOrder: DEFAULT_SEARCH_MENU_ORDER
     };
     fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 4));
 } else {
-    console.log(`[Boot] settings.json already exists. Skipping generation.`);
+    // Migrate legacy flat string array to v2 object format if needed
+    try {
+        const existing = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+        if (Array.isArray(existing.searchMenuOrder) && typeof existing.searchMenuOrder[0] === 'string') {
+            console.log(`[Boot] settings.json: migrating searchMenuOrder to v2 object format...`);
+            existing.searchMenuOrder = existing.searchMenuOrder.map(legacyKey => {
+                const map = LEGACY_SEARCH_MENU_MAP[legacyKey];
+                return {
+                    key:        map?.key        || legacyKey,
+                    name:       map?.name       || legacyKey,
+                    icon:       map?.icon       || null,
+                    enabled:    true,
+                    sourceType: map?.sourceType || 'music'
+                };
+            });
+            fs.writeFileSync(settingsPath, JSON.stringify(existing, null, 4));
+            console.log(`[Boot] settings.json: searchMenuOrder migration complete.`);
+        } else {
+            console.log(`[Boot] settings.json already exists. Skipping generation.`);
+        }
+    } catch (e) {
+        console.error(`[Boot] settings.json migration failed:`, e.message);
+    }
 }
 
 // ============================================================================
@@ -227,7 +268,8 @@ if (!isReady) {
 
     app.use('/api', require('./routes/controller'));
     app.use('/api', require('./routes/manager'));
-	app.use('/api', require('./routes/admin').router); // Fix: Extracted .router
+    app.use('/api', require('./routes/admin'));
+    app.use('/api', require('./routes/tools').router);
     app.use('/api/admin', require('./routes/mass_utils').router);
 
     app.use('/', require('./routes/bridge')); 
@@ -434,12 +476,10 @@ if (!isReady) {
                 console.log(`[Boot] ⚠️ Music Assistant is online (v${massHealth.version}), but was NOT restarted.`);
             }
             
-            const minReq = [2, 8, 9];
+
             const current = massHealth.version.split('.').map(Number);
             const isOutdated = current.some((num, i) => num < minReq[i]);
-            if (isOutdated) {
-                console.log(`[Boot] ⚠️  NOTICE: Music Assistant 2.8.9 or later is required.\n`);
-            }
+            if (isOutdated) {console.log(`[Boot] ⚠️  NOTICE: Music Assistant ${minReq.join('.')} or later is required.\n`);}
 
           // STEP 6: Smart Polling & Configuration Injection        
             const { enforcePlayerConfigs } = require('./routes/mass_utils');
@@ -464,23 +504,24 @@ if (!isReady) {
         console.log(`➡️  Web UI accessible at: http://${process.env.APP_IP}:${PORT}/control.html\n`);
 		
 		// =======================================================================
-        // STEP 9: THE NETWORK KEEP-ALIVE HEARTBEAT
+        // STEP 9: NETWORK KEEP-ALIVE HEARTBEAT TEST AT 30 Min
         // =======================================================================
-        // Runs every 45 minutes to prevent network routers from killing idle DLNA/AirPlay sockets overnight.
+        const KEEP_ALIVE_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+        // Runs per the interval above to prevent network routers from killing idle DLNA/AirPlay sockets overnight.
         setInterval(async () => {
             console.log(`\n[Boot] 💓 Executing scheduled Network Keep-Alive ping to Music Assistant...`);
             try {
                 const massCore = require('./routes/mass');
-                
+
                 // Runs the Soft Rescan (players/all) silently in the background
                 // Passing the combined string ensures the backend logs perfectly match the UI
-                await massCore.forceRescan(false, 'dlna & airplay'); 
-                
+                await massCore.forceRescan(false, 'dlna & airplay');
+
             } catch (e) {
                 // Silently catch network drops so the Docker container doesn't crash if MA is temporarily offline
                 console.error(`[Boot] ⚠️ Keep-Alive heartbeat failed to reach MASS: ${e.message}`);
             }
-        }, 45 * 60 * 1000); // 45 minutes in milliseconds
+        }, KEEP_ALIVE_INTERVAL_MS);
 	}	
 
 	const { startScheduler } = require('./routes/utils');

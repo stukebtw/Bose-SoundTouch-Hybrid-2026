@@ -3,6 +3,7 @@ const router = express.Router();
 const http = require('http');
 const axios = require('axios');
 const mass = require('./mass');
+const { powerOffAllSpeakers } = require('./utils');
 
 function dockerAction(action = 'restart') {
     return new Promise((resolve, reject) => {
@@ -92,6 +93,11 @@ async function enforcePlayerConfigs(speakers) {
 
         if (!allDiscovered) console.log(`[Boot] ⚠️ Discovery timeout. Auditing only available speakers.`);
 
+        // Brief settle: MASS marks players discovered before protocol keys are fully hydrated.
+        // Without this, config/players/get returns incomplete data for slow-to-respond speakers.
+        console.log(`[MASS Utils] ⏳ Waiting 15s for MA to finish loading protocol configs...`);
+        await new Promise(resolve => setTimeout(resolve, 15000));
+
         // --- STAGE 2: Core Configuration Audit ---
         console.log(`[MASS Utils] ⚙️ Auditing user-facing UI configurations...`);
 
@@ -109,7 +115,12 @@ async function enforcePlayerConfigs(speakers) {
             
             const dlnaId = Object.keys(currentValues).find(k => k.startsWith('uuid:') && k.includes('||protocol||'))?.split('||')[0];
             const airplayId = Object.keys(currentValues).find(k => k.startsWith('ap') && k.includes('||protocol||'))?.split('||')[0];
-            
+
+            if (!dlnaId && !airplayId) {
+                console.log(`[MASS Utils] ⏭️ ${player.name}: Protocols not yet populated by MA. Skipping — will enforce on next boot.`);
+                continue;
+            }
+
             const currentPref = currentValues['preferred_output_protocol']?.value || '';
             
             let activeMode;
@@ -137,8 +148,9 @@ async function enforcePlayerConfigs(speakers) {
                 "volume_normalization": false,
                 "tts_pre_announce": false,
                 "smart_fades_mode": "disabled",
-                "volume_control": "DLNA",
-                "mute_control": "DLNA",
+                "volume_control": activeMode === 'dlna' ? dlnaId : "follow_protocol",
+                "mute_control":   activeMode === 'dlna' ? dlnaId : "follow_protocol",
+                "play_media_overrides_group": true,
                 "preferred_output_protocol": activeId,
                 [`${activeId}||protocol||enabled`]: true
             };
@@ -152,6 +164,7 @@ async function enforcePlayerConfigs(speakers) {
 
             if (Object.keys(batchPayload).length > 0) {
                 console.log(`[MASS Utils] ⚠️ UI drift detected on ${player.name}. Pushing user-facing settings (${activeMode.toUpperCase()})...`);
+                if (global.DEBUG_MODE) console.log(`[MASS Utils] 📦 Payload: ${JSON.stringify(batchPayload)}`);
                 await axios.post(`${baseUrl}/api`, {
                     command: "config/players/save", args: { player_id: player.player_id, values: batchPayload }
                 }, reqConfig);
@@ -164,40 +177,6 @@ async function enforcePlayerConfigs(speakers) {
     }
 }
 
-
-
-// --- THE CLEAN SLATE PROTOCOL (SMART POWER OFF ALL) ---
-async function powerOffAllSpeakers() {
-    const fs = require('fs');
-    const path = require('path');
-    const speakersPath = path.join(process.cwd(), 'config', 'speakers.json');
-    if (!fs.existsSync(speakersPath)) return;
-    
-    const SPEAKERS = JSON.parse(fs.readFileSync(speakersPath, 'utf8'));
-    const LOCAL_PORT = process.env.APP_PORT || 3000;
-    
-    console.log(`\n[Admin] 🧹 Putting all active speakers to sleep before MASS restart...`);
-
-    const sleepTasks = SPEAKERS.map(async (speaker) => {
-        try {
-            const statusRes = await axios.get(`http://${speaker.ip}:8090/now_playing`, { timeout: 2000 });
-            if (!statusRes.data.includes('source="STANDBY"')) {
-                console.log(`   └─ 💤 Initiating smart power-down for ${speaker.name}...`);
-                console.log(`   └─ 🔀 Routing POWER command through the Smart Controller...`);
-                // Route directly to controller.js
-                await axios.post(`http://127.0.0.1:${LOCAL_PORT}/api/key`, {
-                    ip: speaker.ip,
-                    key: 'POWER'
-                });
-            }
-        } catch (e) {
-            console.error(`   └─ ⚠️ Could not reach ${speaker.name} to power it down.`);
-        }
-    });
-
-    await Promise.allSettled(sleepTasks);
-    await new Promise(r => setTimeout(r, 1500)); 
-}
 
 
 // POST /api/admin/restart_ma

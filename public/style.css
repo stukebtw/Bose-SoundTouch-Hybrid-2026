@@ -23,6 +23,10 @@ input[type=range] {
     --group: #9b59b6;       /* Purple */
     --nas: #3498db;         /* Blue */
     --radio: #e67e22;       /* Orange */
+    --accent-blue: #3498db;
+    --accent-orange: #f39c12;
+    --accent-purple: #9b59b6;
+    --accent-teal: #1abc9c;
     --border: #333; 
     --nav-hover: #333; 
     --pending: #f1c40f;     /* Yellow */
@@ -82,7 +86,71 @@ body {
 .container, .app-container { max-width: 1200px; margin: 0 auto; }
 
 /* =========================================
-   2. SHARED COMPONENTS
+   2. SHARED LAYOUT & UTILITY CLASSES
+   ========================================= */
+.header-brand {
+    font-weight: 700;
+    color: var(--title-color);
+    font-size: 1.1em;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    white-space: nowrap;
+    min-width: 250px;
+}
+
+.header-brand img {
+    height: 32px;
+    width: auto;
+}
+
+.header-brand-stack {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-right: 30px;
+}
+
+.header-badge-row {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    margin-left: 70px;
+    margin-top: 2px;
+}
+
+.header-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.card-accent { border-left: 4px solid var(--accent); }
+.card-accent-orange { border-left: 3px solid var(--accent-orange); }
+.card-accent-purple { border-left: 3px solid var(--accent-purple); }
+.card-accent-teal { border-left: 3px solid var(--accent-teal); }
+.card-accent-danger { border-left: 3px solid var(--danger); }
+
+.btn-action {
+    width: 100%;
+    margin-top: 15px;
+    background: var(--accent-blue);
+    color: white;
+    border: none;
+}
+
+.btn-action.btn-blue { background: var(--accent-blue); }
+.btn-action.btn-orange { background: var(--accent-orange); }
+.btn-action.btn-purple { background: var(--accent-purple); }
+.btn-action.btn-teal { background: var(--accent-teal); }
+.btn-action.btn-danger { background: var(--danger); }
+
+.btn-action:hover {
+    filter: brightness(1.05);
+}
+
+/* =========================================
+   3. SHARED COMPONENTS
    ========================================= */
    
 button, .btn, .nav-link, .global-link, .filter-pill, .source-btn, .btn-preset {
@@ -294,7 +362,6 @@ h3 { margin: 0; color: var(--text); font-size: 1.1em; display: flex; align-items
 .status.master { color: var(--group); }
 
 /* Library / Admin / Other Grids */
-/* Library / Admin / Other Grids */
 #lib-favorites, #recents-results, #search-results, #custom-history-results { 
     display: grid; 
     /* minmax(260px) guarantees exactly 4 cards per row on standard desktop screens */
@@ -396,7 +463,10 @@ h3 { margin: 0; color: var(--text); font-size: 1.1em; display: flex; align-items
 .top-bar h2 { color: var(--title-color) !important; }
 .nav-tabs { display: flex; gap: 5px; background: var(--btn-bg); padding: 5px; border-radius: 8px; border: 1px solid var(--border); }
 .nav-btn { background: transparent; border: none; color: var(--text-secondary); padding: 8px 16px; cursor: pointer; font-weight: bold; border-radius: 6px; font-size: 0.9em; display:flex; align-items:center; gap:8px; }
-.nav-btn.active { background: #444; color: white; }
+.nav-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+.tools-page .tools-subpage { display: block; }
+.tools-page .manager-main-tabs { flex-wrap: wrap; }
+.tools-page .manager-main-tabs .nav-btn { flex: 1 1 220px; justify-content: center; }
 .search-header { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border); }
 .source-row { display: flex; gap: 10px; margin-bottom: 15px; }
 .source-btn { flex: 1; padding: 8px; border: 1px solid var(--border); background: var(--btn-bg); color: var(--btn-text); border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1.1em; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; }
@@ -469,8 +539,6 @@ h3 { margin: 0; color: var(--text); font-size: 1.1em; display: flex; align-items
 
 /* Admin */
 #admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 15px; align-items: start; }
-.view-section { display: none; animation: fadeIn 0.3s ease; }
-.view-section.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 #admin-grid input[type="text"], #admin-grid input[type="range"] { width: 60%; } 
 .sub-head { font-size: 0.85em; color: var(--text-secondary); margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
@@ -497,21 +565,6 @@ button.pwr-off, button.state-off { background: var(--btn-bg); color: var(--btn-t
     box-sizing: border-box; 
 }
 
-.stream-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; margin-bottom: 15px; }
-.stream-grid input { width: 100%; }
-.stream-controls { display: flex; justify-content: space-between; align-items: center; background: var(--panel-bg); border: 1px solid var(--panel-border); padding: 10px; border-radius: 6px; gap: 15px; }
-.nas-layout { display: flex; gap: 25px; flex-wrap: wrap; }
-.nas-active-card { flex: 1; min-width: 280px; background: var(--panel-bg); padding: 20px; border-radius: 8px; border: 1px solid var(--panel-border); }
-.nas-item { background: var(--panel-bg); padding: 15px; border-radius: 4px; border: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 10px; }
-.nas-item-text { text-align: left; }
-
-.step-box { margin-bottom: 20px; }
-.step-title { color: var(--accent); font-weight: bold; margin-bottom: 5px; display: block; font-size: 0.9em; letter-spacing: 0.5px; text-transform: uppercase; }
-.step-text { color: var(--text-secondary); font-size: 0.95em; line-height: 1.6; }
-.step-text strong { color: var(--text); font-weight: bold; }
-.step-text a { color: var(--accent); text-decoration: none; }
-.step-text a:hover { text-decoration: underline; }
-
 /* =========================================
    6. MOBILE RESPONSIVENESS
    ========================================= */
@@ -523,10 +576,15 @@ button.pwr-off, button.state-off { background: var(--btn-bg); color: var(--btn-t
     .top-bar h2 { font-size: 1.2em !important; flex-wrap: wrap; justify-content: center; text-align: center; }
     .app-header > div:first-child { display: flex !important; flex-direction: column !important; width: 100%; gap: 15px; }
     .app-header > div:last-child { display: flex !important; flex-direction: row !important; width: 100%; justify-content: space-between; gap: 10px; }
-    .app-header button.btn-help { width: 48%; margin-top: 5px; padding: 10px; }
+    .header-actions { flex-direction: column !important; gap: 6px !important; }
+    .app-header button.btn-help { width: 100%; margin-top: 0; padding: 10px; }
+    .header-brand-stack { margin-right: 0 !important; }
+    .header-badge-row { margin-left: 0 !important; justify-content: center; }
+    .prefs-grid { grid-template-columns: 1fr !important; }
     .app-title, .global-nav > div:first-child { justify-content: center; margin-right: 0 !important; width: 100%; font-size: 1.2em; white-space: nowrap !important; }
     .nav-center-group, .nav-menu { flex-wrap: wrap; justify-content: center; width: 100%; gap: 8px; display: flex !important; }
-	.global-link, .nav-link { flex-grow: 1; text-align: center; padding: 10px; background: var(--btn-bg); border: 1px solid var(--btn-border); color: var(--btn-text); }  
+    .nav-hide-mobile { display: none !important; }
+	.global-link, .nav-link { flex-grow: 1; text-align: center; padding: 10px; background: var(--btn-bg); border: 1px solid var(--btn-border); color: var(--btn-text); }
     .global-link.active, .nav-link.active { background: var(--accent) !important; color: black !important; border-color: var(--accent) !important; }
     .speaker-selector-container { width: 100%; justify-content: center; margin: 0; }
     .btn-all-off { width: 100%; justify-content: center; padding: 12px; }
@@ -553,7 +611,6 @@ button.pwr-off, button.state-off { background: var(--btn-bg); color: var(--btn-t
    7. UTILITY OVERRIDES (Used in Admin/Manager)
    ========================================= */
 #nas-ip-display, 
-.nas-item-text > div:last-child,
 h2 > span,
 label[style*="color"] {
     color: var(--text-secondary) !important;
@@ -781,20 +838,6 @@ input:disabled + label {
     letter-spacing: 1px;
 }
 
-/* --- SPEAKER STATUS UTILITIES --- */
-.status-offline {
-    color: #e74c3c !important; /* Red text for unplugged speakers */
-}
-
-.status-missing {
-    color: #888 !important; /* Gray text for speakers missing from MASS */
-}
-
-.btn-unreachable {
-    opacity: 0.5;
-    cursor: not-allowed !important;
-    justify-content: space-between;
-}
 
 /* =========================================
    10. MOBILE TABS (Targeted 2x2 Grid)
@@ -861,6 +904,38 @@ input:disabled + label {
     }
 }
 /* --- MASS ERROR BANNER --- */
+.banner {
+    display: none;
+    position: relative;
+    z-index: 10000;
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.banner-update {
+    background: #0056b3;
+    padding: 12px;
+    font-family: sans-serif;
+}
+
+.banner-link {
+    color: #fff;
+    text-decoration: underline;
+    margin: 0 20px;
+    font-weight: bold;
+}
+
+.banner-button {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.5);
+    color: white;
+    padding: 5px 15px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
 #mass-error-banner {
     display: none; 
     position: fixed; 
@@ -891,6 +966,7 @@ input:disabled + label {
 #mass-error-banner .banner-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 5px; }
 
 #mass-error-banner .btn-dismiss { background: transparent; color: #ccc; border: 1px solid #555; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.9em; }
+#mass-error-banner .btn-dismiss.banner-button--success { background: #2ecc71; color: #000; font-weight: bold; border: none; }
 #mass-error-banner .btn-restart { background: #e74c3c; color: #fff; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9em; }
 #mass-error-banner .btn-reconnect { background: var(--radio); color: #fff; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.9em; }
 
@@ -979,9 +1055,17 @@ input:disabled + label {
     margin-bottom: 20px;
 }
 
+.prefs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px 30px;
+    align-items: start;
+    margin-bottom: 15px;
+}
+
 .pref-label {
-    flex: 1 1 calc(50% - 15px); /* Safely creates 2 columns */
-    min-width: 200px;           /* Auto-wraps to 1 column on mobile */
+    flex: 1 1 calc(50% - 15px);
+    min-width: 200px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1040,6 +1124,11 @@ input:disabled + label {
     height: 10px;
     width: auto;
     opacity: 0.8;
+}
+
+.tz-badge {
+    font-family: monospace;
+    font-size: 0.9em;
 }
 /* Red Trash Can for Favorites */
 .action-delete {

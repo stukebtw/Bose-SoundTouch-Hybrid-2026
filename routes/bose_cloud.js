@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const xml2js = require('xml2js');
+const utils = require('./utils');
 
 const IP = process.env.APP_IP;
 const PORT = process.env.APP_PORT;
@@ -136,15 +137,18 @@ function generateSourceProviders(reqIp) {
 
 function generatePresetsXml() {
     const time = getTimestamp();
+    // Sourced from utils.getHybridPresetDefinitions() so this cloud-delivered XML and
+    // the Preset Watchdog's direct WAPI storePreset write can never define "Hybrid
+    // Preset N" differently.
+    const definitions = utils.getHybridPresetDefinitions();
     let presetsXml = '<presets>';
-    
-    for (let i = 1; i <= 6; i++) {
-        const streamUrl = `http://${IP}:${PORT}/preset/${i}.mp3`;
+
+    for (const preset of definitions) {
         presetsXml += `
-        <preset buttonNumber="${i}">
+        <preset buttonNumber="${preset.id}">
             <contentItemType>stationurl</contentItemType>
-            <location>${streamUrl}</location>
-            <name>Hybrid Preset ${i}</name>
+            <location>${preset.url}</location>
+            <name>${preset.name}</name>
             <createdOn>${time}</createdOn>
             <updatedOn>${time}</updatedOn>
             <source id="1001" type="Audio">
@@ -206,6 +210,26 @@ router.use((req, res, next) => {
         res.set('Content-Type', 'application/vnd.bose.streaming-v1.2+xml');
     }
     res.set('Etag', Date.now().toString());
+
+    // Watchdog observe mode: log every cloud hit for monitored speakers.
+    // Globals are kept in sync by updateWatchdogGlobals() (called on startup
+    // and after every settings save) so this check is a pure memory read.
+    if (global.WATCHDOG_MODE === 'observe' && Array.isArray(global.WATCHDOG_SPEAKERS)) {
+        const reqIp = getIp(req);
+        if (global.WATCHDOG_SPEAKERS.includes(reqIp)) {
+            const rawBody = req.body
+                ? (typeof req.body === 'string' ? req.body : JSON.stringify(req.body))
+                : undefined;
+            utils.appendWatchdogLog(reqIp, {
+                ts:     new Date().toISOString(),
+                type:   'cloud_event',
+                method: req.method,
+                path:   req.url,
+                ...(rawBody ? { body: rawBody } : {})
+            });
+        }
+    }
+
     next();
 });
 
@@ -301,7 +325,7 @@ router.get('/streaming/account/:id/device/:deviceId/presets', (req, res) => {
 
 router.get('/streaming/account/:id/provider_settings', (req, res) => {
     const reqIp = getIp(req);
-    console.log(`[Bose Cloud] ⚙️ Provider Settings requested by ${reqIp}. Returning empty 200 (matches real Bose cloud UberBose/SoundCork Findings).`);
+    console.log(`[Bose Cloud] ⚙️ Provider Settings requested by ${reqIp}. Return 200 matching real Bose cloud UberBose/SoundCork Findings).`);
     res.set('Content-Type', 'application/vnd.bose.streaming-v1.2+xml');
     res.status(200).send('');
 });

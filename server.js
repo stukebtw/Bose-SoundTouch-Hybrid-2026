@@ -1,7 +1,7 @@
 // ============================================================================
 // PHASE 1: IMPORTS & CONSTANTS
 // ============================================================================
-const CURRENT_VERSION = "v3.6";
+const CURRENT_VERSION = "v3.6.1";
 const ENV_SCHEMA_VERSION = "v3.5"; 
 const minReq = [2, 9, 1]; //MASS VERSION
 let UPDATE_CACHED_DATA = { updateAvailable: false, current: CURRENT_VERSION };
@@ -155,6 +155,9 @@ if (!fs.existsSync(settingsPath)) {
         includeReboot: false,
         scheduledPlays: [],
         bypassCloudEmulation: false,
+        presetWatchdogSpeakers: [],
+        presetWatchdogIntervalMinutes: 60,
+        presetWatchdogMode: 'push',
         searchMenuOrder: DEFAULT_SEARCH_MENU_ORDER
     };
     fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 4));
@@ -504,9 +507,9 @@ if (!isReady) {
         console.log(`➡️  Web UI accessible at: http://${process.env.APP_IP}:${PORT}/control.html\n`);
 		
 		// =======================================================================
-        // STEP 9: NETWORK KEEP-ALIVE HEARTBEAT TEST AT 30 Min
+        // STEP 9: NETWORK KEEP-ALIVE HEARTBEAT TEST AT 90 Min
         // =======================================================================
-        const KEEP_ALIVE_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+        const KEEP_ALIVE_INTERVAL_MS = 90 * 60 * 1000; // 90 minutes
         // Runs per the interval above to prevent network routers from killing idle DLNA/AirPlay sockets overnight.
         setInterval(async () => {
             console.log(`\n[Boot] 💓 Executing scheduled Network Keep-Alive ping to Music Assistant...`);

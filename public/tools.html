@@ -223,7 +223,6 @@
 			</div>
 		</div>
 		</div>
-
 		<div id="tab-services" class="tools-subpage" style="display:none">
 			<div class="card card-accent-purple" style="margin-bottom: 25px; height:auto;">
 					<h3>⚙️ System Services</h3>
@@ -328,6 +327,60 @@
 						<button class="btn primary" style="background:#3498db; color:white; border:none; margin-left: auto;" onclick="downloadLogs()">💾 Download .txt</button>
 					</div>
 				</div>
+			</div>
+
+			<div class="card card-accent-orange" style="margin-bottom: 25px; height:auto;">
+			<div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="const el = document.getElementById('presetWatchdogCollapse'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">
+				<h3 style="margin:0;">🔁 Preset Refresh Watchdog</h3>
+				<span id="presetWatchdogCount" style="background: var(--input-bg); padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; border: 1px solid var(--border);">0 Speakers</span>
+			</div>
+			<div class="sub-head" style="margin-top: 5px; margin-bottom: 0;">Scheduled re-write of presets to speaker memory without reboot. May help with NVRAM aging issues SoundCork/Others have reported on some older units. Only needed for speakers that keep losing presets — Most Speakers won't need this.</div>
+
+			<div id="presetWatchdogCollapse" style="display: none; margin-top: 15px;">
+				<ul id="presetWatchdogList" style="list-style: none; padding: 0; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+					<li id="presetWatchdogEmpty" style="padding: 10px; background: var(--input-bg); color: var(--text-secondary); font-style: italic;">No speakers flagged.</li>
+				</ul>
+
+				<div style="display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+					<div style="flex-grow: 1; min-width: 150px;">
+						<label style="display:block; font-size:0.75em; color:var(--text-secondary); margin-bottom:5px;">SPEAKER</label>
+						<select id="newWatchdogSpeaker" style="width:100%; background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:8px; border-radius:4px;">
+							<option value="" disabled selected>Select speaker...</option>
+						</select>
+					</div>
+					<div>
+						<button id="addWatchdogSpeakerBtn" class="btn primary" style="white-space: nowrap; background: #f39c12; border:none; padding: 8px 15px;" onclick="addWatchdogSpeaker()">
+							➕ Add
+						</button>
+					</div>
+				</div>
+
+				<hr style="border-color: var(--border); margin: 20px 0;">
+
+				<div style="margin-bottom: 14px;">
+					<div style="font-size: 0.8em; font-weight: bold; color: var(--text-secondary); margin-bottom: 8px; letter-spacing: 0.04em;">WATCHDOG MODE</div>
+					<label class="pref-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 7px;">
+						<input type="radio" name="watchdogMode" id="watchdogModePush" value="push" onchange="onWatchdogModeChange()">
+						🔁 Push Presets — re-write all 6 presets on interval
+					</label>
+					<label class="pref-label" style="display: flex; align-items: center; gap: 8px;">
+						<input type="radio" name="watchdogMode" id="watchdogModeObserve" value="observe" onchange="onWatchdogModeChange()">
+						🔍 Observe &amp; Log — query presets every 5 min + capture all cloud events (12hr rolling log)
+					</label>
+				</div>
+
+				<div id="watchdogIntervalRow">
+					<label class="pref-label" style="display: flex; align-items: center; gap: 8px;">
+						Refresh Every
+						<select id="presetWatchdogInterval" style="background:var(--input-bg); color:var(--input-text); border:1px solid var(--border); padding:2px 4px; border-radius:4px; font-size:0.9em; width:auto;" onchange="saveWatchdogSpeakers()">
+							<option value="30">30 Minutes</option>
+							<option value="60">1 Hour</option>
+							<option value="120">2 Hours</option>
+							<option value="240">4 Hours</option>
+						</select>
+					</label>
+				</div>
+			</div>
 			</div>
 				
 			<div class="card card-accent-teal" style="margin-bottom: 25px; height:auto;">
@@ -599,6 +652,15 @@
 
 		            // Re-render scheduled plays now that settings are loaded
 		            renderScheduledPlays();
+
+		            // Restore watchdog mode radio + interval row visibility
+		            const wMode = fullSettingsPayload.presetWatchdogMode || 'push';
+		            const pushRadio    = document.getElementById('watchdogModePush');
+		            const observeRadio = document.getElementById('watchdogModeObserve');
+		            if (pushRadio)    pushRadio.checked    = (wMode === 'push');
+		            if (observeRadio) observeRadio.checked = (wMode === 'observe');
+		            const intervalRow = document.getElementById('watchdogIntervalRow');
+		            if (intervalRow) intervalRow.style.display = (wMode === 'push') ? '' : 'none';
 		        }
 		    } catch (e) {
 		        console.error("Failed to load settings from server", e);
@@ -955,7 +1017,10 @@
 		        const h12  = h % 12 || 12;
 		        const timeLabel = `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
 
+		        const enabled = play.enabled !== false;
+		        li.style.opacity = enabled ? '1' : '0.5';
 		        li.innerHTML = `
+		            <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleScheduledPlay(${idx}, this.checked)" style="width:18px; height:18px; cursor:pointer; accent-color:var(--accent); flex-shrink:0;">
 		            <span style="color:var(--text); font-weight:bold; white-space:nowrap;">${timeLabel} — Preset ${play.preset} — ${spLabel}</span>
 		            <span style="flex-grow:1;"></span>
 		            <button onclick="removeScheduledPlay(${idx})" style="background:var(--danger); color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">✕</button>
@@ -1001,7 +1066,7 @@
 		    const m = parseInt(mVal, 10);
 
 		    if (!fullSettingsPayload.scheduledPlays) fullSettingsPayload.scheduledPlays = [];
-		    fullSettingsPayload.scheduledPlays.push({ speakerIp: ip, preset, hour: h, minute: m });
+		    fullSettingsPayload.scheduledPlays.push({ speakerIp: ip, preset, hour: h, minute: m, enabled: true });
 
 		    // Reset add-row
 		    hourSel.selectedIndex = 0;
@@ -1019,6 +1084,13 @@
 		    await saveScheduledPlays();
 		}
 
+		async function toggleScheduledPlay(index, enabled) {
+		    if (!Array.isArray(fullSettingsPayload.scheduledPlays)) return;
+		    fullSettingsPayload.scheduledPlays[index].enabled = enabled;
+		    renderScheduledPlays();
+		    await saveScheduledPlays(true);
+		}
+
 async function saveScheduledPlays(silent = false) {
 		    if (silent) {
 		        // Fire-and-forget without alert
@@ -1029,6 +1101,134 @@ async function saveScheduledPlays(silent = false) {
 		        }).catch(e => console.error('[ScheduledPlay] Save failed:', e.message));
 		    } else {
 		        await pushSettingsToServer('✅ Scheduled plays saved.');
+		    }
+		}
+		// =====================================================================
+
+		// =====================================================================
+		// PRESET REFRESH WATCHDOG — CRUD
+		// =====================================================================
+		let watchdogDevices = [];
+
+		function initPresetWatchdogUI(devices) {
+		    watchdogDevices = Array.isArray(devices) ? devices.filter(d => d.online) : [];
+		    renderWatchdogSpeakers();
+		    updateNewWatchdogSpeakerOptions();
+		}
+
+		function renderWatchdogSpeakers() {
+		    const list  = document.getElementById('presetWatchdogList');
+		    const empty = document.getElementById('presetWatchdogEmpty');
+		    const badge = document.getElementById('presetWatchdogCount');
+		    const intervalSel = document.getElementById('presetWatchdogInterval');
+		    const ips = Array.isArray(fullSettingsPayload.presetWatchdogSpeakers) ? fullSettingsPayload.presetWatchdogSpeakers : [];
+
+		    if (badge) badge.textContent = `${ips.length} Speaker${ips.length === 1 ? '' : 's'}`;
+		    if (intervalSel) {
+		        intervalSel.disabled = ips.length === 0;
+		        intervalSel.value = String(fullSettingsPayload.presetWatchdogIntervalMinutes ?? 60);
+		    }
+
+		    if (!list) return;
+		    list.querySelectorAll('li:not(#presetWatchdogEmpty)').forEach(li => li.remove());
+		    if (empty) empty.style.display = ips.length === 0 ? '' : 'none';
+
+		    ips.forEach(ip => {
+		        const dev = watchdogDevices.find(d => d.ip === ip);
+		        const label = dev ? `${dev.name} (${ip})` : ip;
+
+		        const li = document.createElement('li');
+		        li.style.cssText = 'display:flex; align-items:center; gap:10px; padding:10px; background:var(--input-bg); border-bottom:1px solid var(--border); flex-wrap:wrap;';
+		        li.innerHTML = `
+		            <span style="color:var(--text); font-weight:bold;">${label}</span>
+		            <span style="flex-grow:1;"></span>
+		            <button onclick="pushPresetNow('${ip}', this)" style="background:#f39c12; color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">🔁 Push Now</button>
+		            <button onclick="removeWatchdogSpeaker('${ip}')" style="background:var(--danger); color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">✕</button>
+		        `;
+		        list.appendChild(li);
+		    });
+
+		    updateNewWatchdogSpeakerOptions();
+		}
+
+		function updateNewWatchdogSpeakerOptions() {
+		    const sel    = document.getElementById('newWatchdogSpeaker');
+		    const addBtn = document.getElementById('addWatchdogSpeakerBtn');
+		    if (!sel) return;
+
+		    const ips = Array.isArray(fullSettingsPayload.presetWatchdogSpeakers) ? fullSettingsPayload.presetWatchdogSpeakers : [];
+		    const used = new Set(ips);
+
+		    const available = watchdogDevices.filter(d => !used.has(d.ip));
+		    sel.innerHTML = '<option value="" disabled selected>Select speaker...</option>' +
+		        watchdogDevices.map(d => {
+		            const isUsed = used.has(d.ip);
+		            return `<option value="${d.ip}" ${isUsed ? 'disabled style="color:var(--text-secondary);"' : ''}>${d.name} (${d.ip})${isUsed ? ' — Watched' : ''}</option>`;
+		        }).join('');
+
+		    if (addBtn) addBtn.disabled = available.length === 0;
+		}
+
+		async function addWatchdogSpeaker() {
+		    const sel = document.getElementById('newWatchdogSpeaker');
+		    const ip  = sel?.value;
+		    if (!ip) return alert('Please select a speaker.');
+
+		    if (!Array.isArray(fullSettingsPayload.presetWatchdogSpeakers)) fullSettingsPayload.presetWatchdogSpeakers = [];
+		    fullSettingsPayload.presetWatchdogSpeakers.push(ip);
+		    renderWatchdogSpeakers();
+		    await saveWatchdogSpeakers();
+		}
+
+		async function removeWatchdogSpeaker(ip) {
+		    if (!Array.isArray(fullSettingsPayload.presetWatchdogSpeakers)) return;
+		    fullSettingsPayload.presetWatchdogSpeakers = fullSettingsPayload.presetWatchdogSpeakers.filter(x => x !== ip);
+		    renderWatchdogSpeakers();
+		    await saveWatchdogSpeakers();
+		}
+
+		function onWatchdogModeChange() {
+		    const mode = document.querySelector('input[name="watchdogMode"]:checked')?.value || 'push';
+		    const intervalRow = document.getElementById('watchdogIntervalRow');
+		    if (intervalRow) intervalRow.style.display = (mode === 'push') ? '' : 'none';
+		    fullSettingsPayload.presetWatchdogMode = mode;
+		    saveWatchdogSpeakers();
+		}
+
+		async function saveWatchdogSpeakers(silent = true) {
+		    const intervalSel = document.getElementById('presetWatchdogInterval');
+		    if (intervalSel) fullSettingsPayload.presetWatchdogIntervalMinutes = parseInt(intervalSel.value, 10);
+
+		    const modeEl = document.querySelector('input[name="watchdogMode"]:checked');
+		    if (modeEl) fullSettingsPayload.presetWatchdogMode = modeEl.value;
+
+		    if (silent) {
+		        fetch('/api/admin/settings', {
+		            method: 'POST',
+		            headers: { 'Content-Type': 'application/json' },
+		            body: JSON.stringify(fullSettingsPayload)
+		        }).catch(e => console.error('[PresetWatchdog] Save failed:', e.message));
+		    } else {
+		        await pushSettingsToServer('✅ Preset watchdog settings saved.');
+		    }
+		}
+
+		async function pushPresetNow(ip, btn) {
+		    if (btn) { btn.disabled = true; btn.textContent = '⏳ Pushing...'; }
+		    try {
+		        const res = await fetch('/api/admin/force_preset_push', {
+		            method: 'POST',
+		            headers: { 'Content-Type': 'application/json' },
+		            body: JSON.stringify({ ip })
+		        });
+		        if (!res.ok) throw new Error('Server rejected the request.');
+		        const dev = watchdogDevices.find(d => d.ip === ip);
+		        const label = dev ? `${dev.name} (${ip})` : ip;
+		        alert(`✅ Preset push initiated for ${label}. Check server logs for details.`);
+		    } catch (e) {
+		        alert('❌ Failed to push presets: ' + e.message);
+		    } finally {
+		        if (btn) { btn.disabled = false; btn.textContent = '🔁 Push Now'; }
 		    }
 		}
 		// =====================================================================
@@ -1059,12 +1259,14 @@ async function saveScheduledPlays(silent = false) {
 		        // ---> BOOT STEREO UI WITH SHARED DATA
 		        initStereoUI(devices);
 		        initScheduledPlays(devices);
+		        initPresetWatchdogUI(devices);
 
 		    } catch (e) {
 		        console.error("Failed to load tools / status", e);
 		        // Still boot the stereo UI with an empty array so dummies inject
 		        initStereoUI([]);
 		        initScheduledPlays([]);
+		        initPresetWatchdogUI([]);
 		    }
 		}
 

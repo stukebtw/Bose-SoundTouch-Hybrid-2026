@@ -4,7 +4,7 @@ const router = express.Router();
 const net = require('net');
 const fs = require('fs');
 const path = require('path');
-const { executeSmartShutdown, runSpeakerAudit } = require('./utils');
+const { executeSmartShutdown, runSpeakerAudit, pushPresetsToSpeaker, updateWatchdogGlobals } = require('./utils');
 
 const SETTINGS_FILE = path.join(process.cwd(), 'config', 'settings.json');
 
@@ -27,7 +27,10 @@ function getSettings() {
         scheduledRestart: false,
         includeReboot: false,
         bypassCloudEmulation: false,
-        searchMenuOrder: ['global', 'radio', 'nas', 'spotify']
+        presetWatchdogSpeakers: [],
+        presetWatchdogIntervalMinutes: 60,
+        presetWatchdogMode: 'push',
+        searchMenuOrder: ['global', 'radio', 'nas']
     };
 }
 
@@ -41,6 +44,7 @@ router.post('/admin/settings', (req, res) => {
         const currentSettings = getSettings();
         const newSettings = { ...currentSettings, ...req.body };
         fs.writeFileSync(SETTINGS_FILE, JSON.stringify(newSettings, null, 4));
+        updateWatchdogGlobals();
         res.json({ success: true });
     } catch (e) {
         console.error("[Tools] Failed to save settings:", e);
@@ -93,6 +97,20 @@ router.post('/admin/force_audit', async (req, res) => {
         res.status(200).json({ success: true, message: "Audit initiated" });
     } catch (e) {
         console.error(`[Tools] Failed to trigger manual audit: ${e.message}`);
+        res.status(500).json({ success: false });
+    }
+});
+
+// --- PRESET WATCHDOG: MANUAL "PUSH NOW" ---
+router.post('/admin/force_preset_push', async (req, res) => {
+    const { ip } = req.body;
+    if (!ip) return res.status(400).json({ success: false, error: "Missing speaker IP" });
+    try {
+        console.log(`[Tools] 🛠️ Manual Preset Push triggered via API for ${ip}.`);
+        pushPresetsToSpeaker(ip); // Executes asynchronously in the background
+        res.status(200).json({ success: true, message: "Preset push initiated" });
+    } catch (e) {
+        console.error(`[Tools] Failed to trigger manual preset push: ${e.message}`);
         res.status(500).json({ success: false });
     }
 });

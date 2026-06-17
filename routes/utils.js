@@ -6,6 +6,9 @@ const xml2js = require('xml2js');
 const { injectPort17000Commands } = require('./preflight');
 const DEFAULT_ICON = "";
 
+const LOG_DIR = path.resolve(process.cwd(), "config", "logs");
+if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+
 function buildImageUrl(artPath, provider, uri) {
     if (artPath && typeof artPath === 'string' && artPath.startsWith('http') && !artPath.includes('imageproxy')) {
         return artPath;
@@ -65,7 +68,121 @@ function scrubText(str) {
 
 let lastAuditDate = null;
 let lastRestartDate = null;
+let lastWatchdogRunMs = null; // set when startScheduler() actually starts the clock
+let lastObserveRunMs = null;  // separate 5-min clock for observe mode
 const firedToday = new Set();
+
+// --- SHARED HYBRID PRESET DEFINITIONS ---
+// Single source of truth for what "Hybrid Preset N" is: the URL, the display name.
+// Consumed by bose_cloud.js (cloud-delivered presets XML, pulled by the speaker
+// during its handshake) and pushPresetsToSpeaker() below (direct local WAPI write).
+// Keeping both fed from here means the two delivery paths can never drift apart.
+function getHybridPresetDefinitions() {
+    const IP = process.env.APP_IP;
+    const PORT = process.env.APP_PORT;
+    const definitions = [];
+    for (let i = 1; i <= 6; i++) {
+        definitions.push({
+            id: i,
+            name: `Hybrid Preset ${i}`,
+            url: `http://${IP}:${PORT}/preset/${i}.mp3`
+        });
+    }
+    return definitions;
+}
+
+// --- PRESET WATCHDOG: Direct WAPI Write (storePreset) ---
+// Writes all 6 Hybrid presets straight into the speaker's local NVRAM via the
+// undocumented but community-confirmed WAPI
+// /storePreset endpoint. Unlike runSpeakerAudit's reboot-based heal, this is
+// non-destructive — no reboot, no standby/wake cycle, no playback interruption.
+// Intended only for speakers flagged in settings.presetWatchdogSpeakers (Tools
+// page "Preset Refresh Watchdog" card) — most speakers never need this.
+async function pushPresetsToSpeaker(ip) {
+    const definitions = getHybridPresetDefinitions();
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    for (const preset of definitions) {
+        const body = `<preset id="${preset.id}" createdOn="${nowSec}" updatedOn="${nowSec}">
+            <ContentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="${preset.url}" sourceAccount="" isPresetable="true">
+                <itemName>${preset.name}</itemName>
+            </ContentItem>
+        </preset>`;
+        try {
+            await axios.post(`http://${ip}:8090/storePreset`, body, {
+                headers: { 'Content-Type': 'text/xml' },
+                timeout: 3000
+            });
+        } catch (e) {
+            console.error(`[Preset Watchdog] ❌ Failed to push Preset ${preset.id} to ${ip}: ${e.message}`);
+        }
+    }
+}
+
+// --- WATCHDOG OBSERVE: 12-HOUR ROLLING LOG ---
+// Appends one entry (JSON object) to config/logs/watchdog_<ip>.json.
+// On every write, entries older than 12 hours are pruned so the file self-limits.
+function appendWatchdogLog(ip, entry) {
+    const logPath = path.join(LOG_DIR, `watchdog_${ip.replace(/\./g, '_')}.json`);
+    const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+    const cutoff = Date.now() - TWELVE_HOURS;
+
+    let entries = [];
+    try {
+        if (fs.existsSync(logPath)) entries = JSON.parse(fs.readFileSync(logPath, 'utf8'));
+    } catch (e) {
+        entries = [];
+    }
+
+    entries.push(entry);
+    entries = entries.filter(e => new Date(e.ts).getTime() > cutoff);
+
+    try {
+        fs.writeFileSync(logPath, JSON.stringify(entries, null, 2));
+    } catch (e) {
+        console.error(`[Watchdog] ❌ Failed to write log for ${ip}:`, e.message);
+    }
+}
+
+// --- WATCHDOG OBSERVE: 5-MINUTE PRESET SNAPSHOT ---
+async function queryPresetsForSpeaker(ip) {
+    const parser = new xml2js.Parser({ explicitArray: false });
+    const entry = { ts: new Date().toISOString(), type: 'preset_snapshot', presets: [] };
+
+    try {
+        const res = await axios.get(`http://${ip}:8090/presets`, { timeout: 3000 });
+        const data = await parser.parseStringPromise(res.data);
+        const raw = data.presets?.preset;
+        if (raw) {
+            const arr = Array.isArray(raw) ? raw : [raw];
+            entry.presets = arr.map(p => ({
+                id:       p.$?.id,
+                name:     p.ContentItem?.itemName || 'Unknown',
+                source:   p.ContentItem?.$?.source || 'Unknown',
+                location: p.ContentItem?.$?.location || ''
+            }));
+        }
+    } catch (e) {
+        entry.error = e.message;
+    }
+
+    appendWatchdogLog(ip, entry);
+    console.log(`[Watchdog] 📋 Preset snapshot for ${ip}: ${entry.presets.length} preset(s)${entry.error ? ' — ERROR: ' + entry.error : ''}`);
+}
+
+// --- WATCHDOG: SYNC GLOBALS FROM SETTINGS ---
+// Called on startup and after every settings save so bose_cloud.js middleware
+// can check global.WATCHDOG_SPEAKERS / global.WATCHDOG_MODE without disk reads.
+function updateWatchdogGlobals() {
+    const settingsPath = path.join(process.cwd(), 'config', 'settings.json');
+    try {
+        const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf8')) : {};
+        global.WATCHDOG_SPEAKERS = Array.isArray(settings.presetWatchdogSpeakers) ? settings.presetWatchdogSpeakers : [];
+        global.WATCHDOG_MODE = settings.presetWatchdogMode || 'push';
+    } catch (e) {
+        console.error('[Watchdog] Failed to sync globals from settings:', e.message);
+    }
+}
 
 function fmtScheduledTime(h, m) {
     if (h == null) return 'Manual Trigger';
@@ -153,7 +270,17 @@ async function runSystemRestart(hour = null, minute = null) {
 
 function startScheduler() {
     console.log(`[Scheduler] 🕰️ Background automation engine started.`);
-    
+
+    // Preset Watchdog interval starts counting from here — NOT from 0/boot. Pre-Flight
+    // already reboots/heals speakers as needed on startup, so re-running this within the
+    // first minute of every restart would be redundant. The clock starts only once the
+    // app is actually up and the scheduler is live.
+    lastWatchdogRunMs = Date.now();
+    lastObserveRunMs  = Date.now();
+
+    // Prime globals so bose_cloud.js middleware has them from the first request.
+    updateWatchdogGlobals();
+
     setInterval(async () => {
         const now = new Date();
         const hours = now.getHours();
@@ -193,10 +320,36 @@ function startScheduler() {
                 await runSystemRestart(RESTART_HOUR, RESTART_MINUTE);
             }
         }
-        // 3. SCHEDULED PLAYS
+        // 3. PRESET WATCHDOG (rolling interval — not tied to a fixed hour like Audit/Restart)
+        const watchdogSpeakers = Array.isArray(settings.presetWatchdogSpeakers) ? settings.presetWatchdogSpeakers : [];
+        const watchdogMode = settings.presetWatchdogMode || 'push';
+
+        if (watchdogSpeakers.length > 0) {
+            if (watchdogMode === 'push') {
+                const intervalMs = (settings.presetWatchdogIntervalMinutes ?? 60) * 60000;
+                if (Date.now() - lastWatchdogRunMs >= intervalMs) {
+                    lastWatchdogRunMs = Date.now();
+                    console.log(`\n[Scheduler] 🔁 Preset Watchdog (Push): refreshing presets on ${watchdogSpeakers.length} speaker(s)...`);
+                    for (const ip of watchdogSpeakers) {
+                        await pushPresetsToSpeaker(ip);
+                    }
+                }
+            } else if (watchdogMode === 'observe') {
+                if (Date.now() - lastObserveRunMs >= 5 * 60000) {
+                    lastObserveRunMs = Date.now();
+                    console.log(`\n[Scheduler] 🔍 Preset Watchdog (Observe): querying ${watchdogSpeakers.length} speaker(s)...`);
+                    for (const ip of watchdogSpeakers) {
+                        await queryPresetsForSpeaker(ip);
+                    }
+                }
+            }
+        }
+
+        // 4. SCHEDULED PLAYS
         const scheduledPlays = Array.isArray(settings.scheduledPlays) ? settings.scheduledPlays : [];
         for (const play of scheduledPlays) {
             if (!play.speakerIp || !play.preset || play.hour == null) continue;
+            if (play.enabled === false) continue;
             const playHour   = parseInt(play.hour, 10);
             const playMinute = parseInt(play.minute ?? 0, 10);
             if (hours !== playHour || minutes !== playMinute) continue;
@@ -338,5 +491,10 @@ module.exports = {
 	executeSmartPreset,
     powerOffAllSpeakers,
     executeSmartShutdown,
-    scheduleProviderReload
+    scheduleProviderReload,
+    getHybridPresetDefinitions,
+    pushPresetsToSpeaker,
+    appendWatchdogLog,
+    queryPresetsForSpeaker,
+    updateWatchdogGlobals
 };

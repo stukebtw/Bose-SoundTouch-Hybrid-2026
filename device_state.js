@@ -306,7 +306,7 @@ async function initDevice(device) {
     let activeWs = null; // Stores the socket so the watchdog can kill it
 
     // 🌟 THE PERMANENT HTTP WATCHDOG (Online & Offline) 🌟
-    // A lightweight pulse running in both directions, exactly as you designed.
+    // A lightweight pulse running in both directions, 
     setInterval(async () => {
         try {
             await axios.get(`http://${device.ip}:8090/info`, { timeout: 2500 });
@@ -769,6 +769,9 @@ async function processSettledState(ip) {
             if (finalPlayStatus === 'PLAY_STATE') {
                 if (!lastState || lastState.track !== finalTrack || lastState.playStatus !== finalPlayStatus) {
                     console.log(`[DeviceState] 🎵 ${ip} playing "${finalTrack || 'Unknown'}" via ${finalProvider || source || 'Unknown'}`);
+                    if (source === 'INVALID_SOURCE' && global.WATCHDOG_MODE === 'observe' && global.WATCHDOG_SPEAKERS?.includes(ip)) {
+                        utils.appendWatchdogLog(ip, { ts: new Date().toISOString(), type: 'ws_event', source: 'INVALID_SOURCE' });
+                    }
                 }
             } else if (isStandby) {
                 if (!lastState || !lastState.isStandby) {

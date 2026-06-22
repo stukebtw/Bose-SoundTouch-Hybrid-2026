@@ -78,6 +78,7 @@ async function evaluateHandshake(ip) {
         }
     }
     
+    await utils.queryPresetsForSpeaker(ip, 'after');
     delete handshakeTracker[ip];
 }
 
@@ -264,6 +265,7 @@ router.post('/streaming/support/power_on', (req, res) => {
     if (!handshakeTracker[reqIp]) {
         handshakeTracker[reqIp] = { powerOn: false, bmx: false, sourceProviders: false, presets: false };
         setTimeout(() => evaluateHandshake(reqIp), 30000);
+        utils.queryPresetsForSpeaker(reqIp, 'before');
     }
     handshakeTracker[reqIp].powerOn = true;
 });
@@ -274,6 +276,7 @@ router.get('/bmx/registry/v1/services', (req, res) => {
     if (!handshakeTracker[reqIp]) {
         handshakeTracker[reqIp] = { powerOn: false, bmx: false, sourceProviders: false, presets: false };
         setTimeout(() => evaluateHandshake(reqIp), 30000);
+        utils.queryPresetsForSpeaker(reqIp, 'before');
     }
     handshakeTracker[reqIp].bmx = true;
     if (isDebug()) console.log(`[Bose Cloud] ☁️ Delivered BMX Registry to ${reqIp}`);

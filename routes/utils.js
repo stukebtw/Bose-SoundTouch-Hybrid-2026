@@ -192,9 +192,10 @@ function appendWatchdogLog(ip, entry) {
 }
 
 // --- WATCHDOG OBSERVE: 5-MINUTE PRESET SNAPSHOT ---
-async function queryPresetsForSpeaker(ip) {
+async function queryPresetsForSpeaker(ip, phase = null) {
+    if (!(global.WATCHDOG_MODE === 'observe' && Array.isArray(global.WATCHDOG_SPEAKERS) && global.WATCHDOG_SPEAKERS.includes(ip))) return;
     const parser = new xml2js.Parser({ explicitArray: false });
-    const entry = { ts: new Date().toISOString(), type: 'preset_snapshot', presets: [] };
+    const entry = { ts: new Date().toISOString(), type: 'preset_snapshot', ...(phase ? { phase } : {}), presets: [] };
 
     try {
         const res = await axios.get(`http://${ip}:8090/presets`, { timeout: 3000 });
@@ -215,7 +216,7 @@ async function queryPresetsForSpeaker(ip) {
 
     appendWatchdogLog(ip, entry);
     if (global.DEBUG_MODE) {
-        console.log(`[Watchdog] 📋 Preset snapshot for ${ip}: ${entry.presets.length} preset(s)${entry.error ? ' — ERROR: ' + entry.error : ''}`);
+        console.log(`[Watchdog] 📋 Preset snapshot for ${ip}${phase ? ' (' + phase + ')' : ''}: ${entry.presets.length} preset(s)${entry.error ? ' — ERROR: ' + entry.error : ''}`);
     }
 }
 

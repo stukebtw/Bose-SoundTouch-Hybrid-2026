@@ -49,7 +49,17 @@ router.post('/admin/settings', (req, res) => {
         const newSpeakers = Array.isArray(newSettings.presetWatchdogSpeakers)     ? newSettings.presetWatchdogSpeakers     : [];
         const added   = newSpeakers.filter(ip => !oldSpeakers.includes(ip));
         const removed = oldSpeakers.filter(ip => !newSpeakers.includes(ip));
-        if (added.length)   console.log(`[Watchdog] ➕ Speaker(s) added to watchdog:   ${added.join(', ')}`);
+        if (added.length) {
+            console.log(`[Watchdog] ➕ Speaker(s) added to watchdog: ${added.join(', ')}`);
+            const logDir = path.join(process.cwd(), 'config', 'logs');
+            for (const ip of added) {
+                const logFile = path.join(logDir, `watchdog_${ip.replace(/\./g, '_')}.json`);
+                if (fs.existsSync(logFile)) {
+                    fs.unlinkSync(logFile);
+                    console.log(`[Watchdog] 🗑️ Cleared stale log for ${ip}`);
+                }
+            }
+        }
         if (removed.length) console.log(`[Watchdog] ➖ Speaker(s) removed from watchdog: ${removed.join(', ')}`);
 
         fs.writeFileSync(SETTINGS_FILE, JSON.stringify(newSettings, null, 4));

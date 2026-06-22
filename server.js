@@ -1,7 +1,7 @@
 // ============================================================================
 // PHASE 1: IMPORTS & CONSTANTS
 // ============================================================================
-const CURRENT_VERSION = "v3.6.6";
+const CURRENT_VERSION = "v3.6.7";
 const ENV_SCHEMA_VERSION = "v3.5"; 
 const minReq = [2, 9, 1]; //MASS VERSION
 let UPDATE_CACHED_DATA = { updateAvailable: false, current: CURRENT_VERSION };
@@ -31,6 +31,19 @@ if (!fs.existsSync(LOG_DIR)) {
     fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
+// Archive watchdog logs from the previous session on every startup
+try {
+    const watchdogLogs = fs.readdirSync(LOG_DIR).filter(f => /^watchdog_.*\.json$/.test(f));
+    for (const f of watchdogLogs) {
+        fs.renameSync(path.join(LOG_DIR, f), path.join(LOG_DIR, f + '.bak'));
+    }
+    if (watchdogLogs.length > 0) {
+        console.log(`[Boot] 🗄️ Archived ${watchdogLogs.length} watchdog log(s) from previous session to .bak`);
+    }
+} catch (e) {
+    console.error(`[Boot] ⚠️ Could not archive watchdog logs: ${e.message}`);
+}
+
 const MAX_LOG_LINES = 1000; 
 const logBuffer = [];
 const originalLog = console.log;
@@ -43,7 +56,19 @@ function captureLog(type, args) {
     if (logBuffer.length > MAX_LOG_LINES) logBuffer.shift(); 
 }
 
-console.log = function() { captureLog('INFO', arguments); originalLog.apply(console, arguments); };
+console.log = function() {
+    captureLog('INFO', arguments);
+    originalLog.apply(console, arguments);
+    if (global.WATCHDOG_MODE === 'observe' && Array.isArray(global.WATCHDOG_SPEAKERS) && global.WATCHDOG_SPEAKERS.length > 0) {
+        const msg = Array.from(arguments).map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+        for (const ip of global.WATCHDOG_SPEAKERS) {
+            if (msg.includes(ip)) {
+                try { require('./routes/utils').appendWatchdogLog(ip, { type: 'console_log', msg }); } catch(e) {}
+                break;
+            }
+        }
+    }
+};
 console.error = function() { captureLog('ERROR', arguments); originalError.apply(console, arguments); };
 
 console.log("=======================================================================");

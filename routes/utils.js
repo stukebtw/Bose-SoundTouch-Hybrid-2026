@@ -8,6 +8,11 @@ const DEFAULT_ICON = "";
 const LOG_DIR = path.resolve(process.cwd(), "config", "logs");
 if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
 
+function localTimestamp(d = new Date()) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
 function buildImageUrl(artPath, provider, uri) {
     if (artPath && typeof artPath === 'string' && artPath.startsWith('http') && !artPath.includes('imageproxy')) {
         return artPath;
@@ -119,8 +124,8 @@ async function speakerHasHybridPresets(ip) {
         const presets = data.presets?.preset;
         if (!presets) return false;
         const arr = Array.isArray(presets) ? presets : [presets];
-        if (arr.length === 0) return false;
-        return arr.some(p =>
+        if (arr.length < 6) return false;
+        return arr.every(p =>
             p.ContentItem?.$?.source === 'LOCAL_INTERNET_RADIO' &&
             p.ContentItem?.$?.location?.includes(`${APP_IP}:${APP_PORT}/preset/`)
         );
@@ -163,6 +168,8 @@ async function pushPresetsToSpeaker(ip) {
 // Appends one entry (JSON object) to config/logs/watchdog_<ip>.json.
 // On every write, entries older than 12 hours are pruned so the file self-limits.
 function appendWatchdogLog(ip, entry) {
+    const { ts: _ignored, ...rest } = entry;
+    const stamped = { ts: localTimestamp(), ...rest };
     const logPath = path.join(LOG_DIR, `watchdog_${ip.replace(/\./g, '_')}.json`);
     const TWELVE_HOURS = 12 * 60 * 60 * 1000;
     const cutoff = Date.now() - TWELVE_HOURS;
@@ -174,7 +181,7 @@ function appendWatchdogLog(ip, entry) {
         entries = [];
     }
 
-    entries.push(entry);
+    entries.push(stamped);
     entries = entries.filter(e => new Date(e.ts).getTime() > cutoff);
 
     try {

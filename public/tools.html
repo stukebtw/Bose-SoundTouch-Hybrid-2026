@@ -334,7 +334,7 @@
 				<h3 style="margin:0;">🔁 Preset Refresh Watchdog</h3>
 				<span id="presetWatchdogCount" style="background: var(--input-bg); padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; border: 1px solid var(--border);">0 Speakers</span>
 			</div>
-			<div class="sub-head" style="margin-top: 5px; margin-bottom: 0;">Scheduled re-write of presets to speaker memory without reboot. May help with NVRAM aging issues SoundCork/Others have reported on some older units. Only needed for speakers that keep losing presets — Most Speakers won't need this.</div>
+			<div class="sub-head" style="margin-top: 5px; margin-bottom: 0;">Logging/Re-write of presets to speaker memory without reboot. Possible NVRAM aging/Electromagnetic Interference Voodoo issues SoundCork/Others reported on some older units. Only needed for speakers that keep losing presets — Most Speakers won't need this.</div>
 
 			<div id="presetWatchdogCollapse" style="display: none; margin-top: 15px;">
 				<ul id="presetWatchdogList" style="list-style: none; padding: 0; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
@@ -365,7 +365,7 @@
 					</label>
 					<label class="pref-label" style="display: flex; align-items: center; gap: 8px;">
 						<input type="radio" name="watchdogMode" id="watchdogModeObserve" value="observe" onchange="onWatchdogModeChange()">
-						🔍 Observe &amp; Log — query presets every 5 min + capture all cloud events (12hr rolling log)
+						🔍 Observe &amp; Log — query presets every 5 min + capture all cloud and speaker events (12hr rolling log)
 					</label>
 				</div>
 

@@ -137,6 +137,11 @@ async function next(target) { await executeCommand(target, "player_queues/next")
 async function previous(target) { await executeCommand(target, "player_queues/previous"); }
 async function pause(target) { await executeCommand(target, "player_queues/pause", { kickstart: false }); }
 async function stop(target, reason="Unknown") { await executeCommand(target, "player_queues/stop", { kickstart: false }); }
+async function cmdStop(target) {
+    const { id, ip } = await resolvePlayer(target);
+    if (!id) return;
+    return await sendWithRetry(id, ip, "players/cmd/stop", { player_id: id }, { kickstart: false });
+}
 // Applies Shuffle/Repeat settings after playback starts.
 // 2-second delay to ensure player has fully transitioned to Playing state before accepting settings.
 async function applySettings(playerId, settings) {
@@ -664,6 +669,7 @@ module.exports = {
     play,
     playMedia,
     stop,
+    cmdStop,
     next,
     previous,
     pause,

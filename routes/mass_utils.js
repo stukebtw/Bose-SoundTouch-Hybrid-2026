@@ -148,8 +148,8 @@ async function enforcePlayerConfigs(speakers) {
                 "volume_normalization": false,
                 "tts_pre_announce": false,
                 "smart_fades_mode": "disabled",
-                "volume_control": activeMode === 'dlna' ? dlnaId : "follow_protocol",
-                "mute_control":   activeMode === 'dlna' ? dlnaId : "follow_protocol",
+                "volume_control": dlnaId,
+                "mute_control":   dlnaId,
                 "play_media_overrides_group": true,
                 "preferred_output_protocol": activeId,
                 [`${activeId}||protocol||enabled`]: true

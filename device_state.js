@@ -658,6 +658,7 @@ async function processSettledState(ip) {
                 delete LAST_METADATA[ip];
                 if (LAST_VALID_STATE[ip] && LAST_VALID_STATE[ip].isStandby === false) {
                     // The 1-2 Punch: Stop the active stream, then clear MA queue completely
+                    mass.cmdStop(ip).catch(() => {}); // Kill transport session (stops AirPlay keepalives)
                     mass.stop(ip).catch(() => {});
                     mass.clearQueue(ip).catch(() => {});
                     // Sync final volume to MASS so it doesn't override with a stale value

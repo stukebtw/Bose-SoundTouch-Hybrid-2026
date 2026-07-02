@@ -16,6 +16,7 @@ async function restartMassContainer() {
     const containerName = process.env.MASS_CONTAINER_NAME;
     const massIp        = process.env.MASS_IP;
     const haToken       = process.env.HA_TOKEN;
+    const haPort        = process.env.HA_PORT || '8123';
 
     if (!containerName) {
         console.log(`[MASS Restart] ⚠️  MASS_CONTAINER_NAME not set in .env — skipping restart.`);
@@ -46,10 +47,10 @@ async function restartMassContainer() {
     // --- Path 2: HA Supervisor API (MASS as HA add-on on a separate VM) ---
     if (haToken && massIp) {
         const addonSlug = containerName.startsWith('addon_') ? containerName.slice(6) : containerName;
-        console.log(`[MASS Restart] 🏠 Trying HA Supervisor API at ${massIp}:8123 (add-on: "${addonSlug}")...`);
+        console.log(`[MASS Restart] 🏠 Trying HA Supervisor API at ${massIp}:${haPort} (add-on: "${addonSlug}")...`);
         try {
             await axios.post(
-                `http://${massIp}:8123/api/services/hassio/addon_restart`,
+                `http://${massIp}:${haPort}/api/services/hassio/addon_restart`,
                 { addon: addonSlug },
                 { headers: { 'Authorization': `Bearer ${haToken}`, 'Content-Type': 'application/json' }, timeout: 10000 }
             );

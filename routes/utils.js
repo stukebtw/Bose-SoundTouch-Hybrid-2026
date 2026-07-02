@@ -1,6 +1,7 @@
 const { URL } = require('url'); // Standard Node.js library
 const fs = require('fs');
 const path = require('path');
+const net = require('net');
 const axios = require('axios');
 const xml2js = require('xml2js');
 const DEFAULT_ICON = "";
@@ -76,6 +77,7 @@ let lastWatchdogRunMs = null;      // set when startScheduler() actually starts 
 let lastObserveRunMs = null;       // separate 5-min clock for observe mode
 let lastObserveHourlyLogMs = null; // hourly "still watching" heartbeat for observe mode
 const firedToday = new Set();
+const stuckStateStreak = {};       // ip → consecutive 5-min polls seen with PLAY_STATE + INVALID_SOURCE
 
 // --- SHARED HYBRID PRESET DEFINITIONS ---
 // Single source of truth for what "Hybrid Preset N" is: the URL, the display name.
@@ -368,6 +370,7 @@ function startScheduler() {
                 }
                 for (const ip of watchdogSpeakers) {
                     await queryPresetsForSpeaker(ip);
+                    await checkAndRecoverStuckSpeaker(ip);
                 }
             }
         }
@@ -507,6 +510,76 @@ function scheduleProviderReload(context) {
     }, 90000);
 }
 
+// --- TARGETED SPEAKER REBOOT (PORT 17000) + PROVIDER RELOAD ---
+// Same recipe as the manual admin.js "Telnet Reboot" route (POST /admin/reboot_speaker):
+// clean POWER shutdown if the speaker is awake, hard reboot via port 17000, then the
+// 90s MASS provider reload so DLNA/AirPlay don't error out on a stale player afterward.
+// Unlike executeSmartShutdown, this touches only the one target IP — no other speakers
+// are powered off and the app process is not restarted.
+async function rebootSpeakerAndReload(ip) {
+    const LOCAL_PORT = process.env.APP_PORT;
+
+    try {
+        const statusRes = await axios.get(`http://${ip}:8090/now_playing`, { timeout: 2000 });
+        if (!statusRes.data.includes('source="STANDBY"')) {
+            console.log(`[Watchdog] 💤 Clean shutdown: Routing POWER command for ${ip} before Telnet reboot...`);
+            await axios.post(`http://127.0.0.1:${LOCAL_PORT}/api/key`, { ip, key: 'POWER' });
+            await new Promise(r => setTimeout(r, 1500));
+        }
+    } catch (e) {
+        console.log(`[Watchdog] ⚠️ Could not verify power state for ${ip} before reboot. Proceeding anyway.`);
+    }
+
+    console.log(`[Watchdog] 🔄 Sending Telnet 'sys reboot' to ${ip} on port 17000...`);
+    const client = new net.Socket();
+    client.on('error', (err) => console.log(`[Watchdog] Telnet error on ${ip}: ${err.message}`));
+    client.connect(17000, ip, () => {
+        client.write('sys reboot\r\n');
+        setTimeout(() => client.destroy(), 500);
+    });
+
+    scheduleProviderReload(ip);
+}
+
+// --- STUCK-STATE DETECTION (WATCHDOG-MONITORED SPEAKERS ONLY) ---
+// Observed failure mode: speaker reports PLAY_STATE + INVALID_SOURCE (a contradictory
+// combo device_state.js already treats as an edge case — normally a transient AirPlay
+// teardown artifact) and never recovers. No BMX/power-on cloud event follows, so the
+// preset-recovery handshake logic in bose_cloud.js never fires, and /info on 8090 keeps
+// answering 200 the whole time, so the offline watchdog in device_state.js never fires
+// either. Two consecutive 5-min polls (~5-10 min stuck) triggers a targeted reboot.
+async function checkAndRecoverStuckSpeaker(ip) {
+    try {
+        const res = await axios.get(`http://${ip}:8090/now_playing`, { timeout: 3000 });
+        const parser = new xml2js.Parser({ explicitArray: false });
+        const data = await parser.parseStringPromise(res.data);
+        const np = data.nowPlaying;
+        const source = np && np.$ ? np.$.source : null;
+        const playStatus = np ? np.playStatus : null;
+
+        if (playStatus === 'PLAY_STATE' && source === 'INVALID_SOURCE') {
+            stuckStateStreak[ip] = (stuckStateStreak[ip] || 0) + 1;
+            console.log(`[Watchdog] ⚠️ ${ip} reporting PLAY_STATE + INVALID_SOURCE (streak: ${stuckStateStreak[ip]}/2).`);
+
+            if (stuckStateStreak[ip] >= 2) {
+                stuckStateStreak[ip] = 0;
+                console.log(`[Watchdog] 🚨 ${ip} stuck in PLAY_STATE + INVALID_SOURCE across 2 consecutive polls — forcing targeted reboot...`);
+                appendWatchdogLog(ip, {
+                    type:   'watchdog_recovery',
+                    action: 'stuck_state_reboot',
+                    reason: 'PLAY_STATE + INVALID_SOURCE persisted across 2 consecutive 5-min polls'
+                });
+                await rebootSpeakerAndReload(ip);
+            }
+        } else {
+            stuckStateStreak[ip] = 0;
+        }
+    } catch (e) {
+        // Unreachable speaker is the offline watchdog's job (device_state.js), not this one.
+        stuckStateStreak[ip] = 0;
+    }
+}
+
 // --- SPEAKER DISCOVERY ---
 // Scans a /24 subnet for Bose SoundTouch speakers via parallel /info requests.
 // Used both at boot (auto-discovery when speakers.json has template data) and
@@ -556,6 +629,7 @@ module.exports = {
     powerOffAllSpeakers,
     executeSmartShutdown,
     scheduleProviderReload,
+    rebootSpeakerAndReload,
     isHybridContentItem,
     speakerHasPresets,
     speakerHasHybridPresets,

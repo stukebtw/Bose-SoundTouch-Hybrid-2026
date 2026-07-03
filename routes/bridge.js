@@ -36,7 +36,7 @@ router.use((req, res, next) => {
     const ip = (req.ip || req.connection.remoteAddress).replace('::ffff:', '');
 	// Only print Bridge HTTP traffic if user enabled Verbose Logging
     if (global.DEBUG_MODE) {
-        console.log(`[Bridge] 🔍 Action: ${req.method} ${req.url} from ${ip}`);
+        console.log(`[Bridge] Action: ${req.method} ${req.url} from ${ip}`);
     }
     next();
 });

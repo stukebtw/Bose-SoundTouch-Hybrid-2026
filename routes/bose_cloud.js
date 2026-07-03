@@ -144,7 +144,7 @@ async function evaluateHandshake(ip) {
                 });
             }
             setTimeout(async () => {
-                console.log(`[Bose Cloud] 🔄 WAPI Preset Recovery: pushing presets to ${ip}...`);
+                console.log(`[Bose Cloud] WAPI Preset Recovery: pushing presets to ${ip}...`);
                 try {
                     await utils.pushPresetsToSpeaker(ip);
                     console.log(`[Bose Cloud] ✅ WAPI Preset Recovery complete for ${ip}.`);
@@ -340,7 +340,7 @@ router.get('/', (req, res) => {
 // 1. Power On Signal
 router.post('/streaming/support/power_on', (req, res) => {
     const reqIp = getIp(req);
-    if (isDebug()) console.log(`[Bose Cloud] ⚡ Power On Signal Handled for ${reqIp}`);
+    if (isDebug()) console.log(`[Bose Cloud] Power On Signal Handled for ${reqIp}`);
     res.send('<status>success</status>');
     initTracker(reqIp);
     handshakeTracker[reqIp].powerOn = true;
@@ -353,7 +353,7 @@ router.get('/bmx/registry/v1/services', (req, res) => {
     initTracker(reqIp);
     handshakeTracker[reqIp].bmx = true;
     handshakeTracker[reqIp].timestamps.bmx = Date.now() - handshakeTracker[reqIp].initTs;
-    if (isDebug()) console.log(`[Bose Cloud] ☁️ Delivered BMX Registry to ${reqIp}`);
+    if (isDebug()) console.log(`[Bose Cloud] Delivered BMX Registry to ${reqIp}`);
     res.set('Content-Type', 'application/json');
     
     // askAgainAfter: how long (ms) the speaker waits before re-checking BMX services.
@@ -391,7 +391,7 @@ router.get('/streaming/sourceproviders', (req, res) => {
         handshakeTracker[reqIp].sourceProviders = true;
         handshakeTracker[reqIp].timestamps.sourceProviders = Date.now() - handshakeTracker[reqIp].initTs;
     }
-    console.log(`[Bose Cloud] 📋 Delivered SourceProviders to ${reqIp}`);
+    console.log(`[Bose Cloud] Delivered SourceProviders to ${reqIp}`);
     res.send(generateSourceProviders(reqIp));
 });
 
@@ -402,7 +402,7 @@ router.get('/streaming/account/:id/full', async (req, res) => {
     //const reqIp = req.query.ip || getIp(req);
     const accountId = req.params.id;
     
-    console.log(`[Bose Cloud] 📥 Account Profile requested by ${reqIp}. Fetching identity...`);
+    console.log(`[Bose Cloud] Account Profile requested by ${reqIp}. Fetching identity...`);
 
     const identity = await getSpeakerIdentity(reqIp);
     if (identity.deviceId === "UNKNOWN") {
@@ -425,13 +425,13 @@ router.get('/streaming/account/:id/device/:deviceId/presets', (req, res) => {
     const reqIp = getIp(req);
 	// TESTING ONLY: Allow browser to spoof the speaker's IP using ?ip=
     //const reqIp = req.query.ip || getIp(req);
-    console.log(`[Bose Cloud] 🔄 Standby Preset Sync requested by ${reqIp}. Delivering Hybrid Presets...`);
+    console.log(`[Bose Cloud] Standby Preset Sync requested by ${reqIp}. Delivering Hybrid Presets...`);
     res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n${generatePresetsXml()}`);
 });
 
 router.get('/streaming/account/:id/provider_settings', (req, res) => {
     const reqIp = getIp(req);
-    console.log(`[Bose Cloud] ⚙️ Provider Settings requested by ${reqIp}. Return 200 matching real Bose cloud UberBose/SoundCork Findings).`);
+    console.log(`[Bose Cloud] Provider Settings requested by ${reqIp}. Return 200 matching real Bose cloud UberBose/SoundCork Findings).`);
     res.set('Content-Type', 'application/vnd.bose.streaming-v1.2+xml');
     res.status(200).send('');
 });

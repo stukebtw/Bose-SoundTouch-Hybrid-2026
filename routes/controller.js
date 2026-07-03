@@ -28,7 +28,7 @@ async function sendBoseXml(ip, endpoint, xmlData) {
 
 // --- RESTORED V2 LOGIC HANDLER ---
 async function handleMassTransport(ip, key, currentState) {
-    console.log(`[Control] 📡 Delegating ${key} to MASS Driver`);
+    console.log(`[Control] Delegating ${key} to MASS Driver`);
     const isActuallyPlaying = (currentState.playStatus === 'PLAY_STATE' || currentState.playStatus === 'BUFFERING_STATE');
 
     if (key === 'NEXT_TRACK') { await mass.next(ip); }
@@ -39,14 +39,14 @@ async function handleMassTransport(ip, key, currentState) {
         // 🛡️ THE V2 SHIELD: Set the expectation BEFORE executing
         // =======================================================
         const targetState = isActuallyPlaying ? 'NOT_PLAYING' : 'PLAYING';
-        console.log(`[Control] 🔒 Setting STATE Lock for PLAY_PAUSE (Target: ${targetState})`);
+        console.log(`[Control] Setting STATE Lock for PLAY_PAUSE (Target: ${targetState})`);
         deviceState.setExpectation(ip, 'PLAY_STATUS', targetState);
         
         if (isActuallyPlaying) {
             console.log(`[Control] Speaker is Playing. Sending explicit PAUSE.`);
             if (currentState.source === 'AIRPLAY') {
                 deviceState.setAirplayPauseIntent(ip);
-                console.log(`[Control] 💾 AirPlay pause intent saved (session will terminate).`);
+                console.log(`[Control] AirPlay pause intent saved (session will terminate).`);
             }
             await mass.pause(ip);
         } else {
@@ -109,7 +109,7 @@ async function handlePowerLogic(ip, currentState) {
 }
 
 async function handlePresetSelection(ip, presetNum, currentState) {
-    console.log(`[Control] 🔘 Preset Click: ${presetNum} (Processing...)`);
+    console.log(`[Control] Preset Click: ${presetNum} (Processing...)`);
     if (currentState.isStandby) deviceState.clearSession(ip);
 
     try {
@@ -142,7 +142,7 @@ async function handlePresetSelection(ip, presetNum, currentState) {
         mass.setPresetMemory(ip, presetNum);
         const lockContext = currentState.isStandby ? '' : liveContext;
         deviceState.setExpectation(ip, 'PRESET', presetNum, lockContext);
-        console.log(`[Control] 🔒 Preset Expectation Set: ${presetNum} | Context: "${lockContext}"`);
+        console.log(`[Control] Preset Expectation Set: ${presetNum} | Context: "${lockContext}"`);
 
         return true;
     } catch (e) {
@@ -221,7 +221,9 @@ router.get('/status', async (req, res) => {
 
 router.post('/key', async(req, res) => {
     const { ip, key } = req.body;
-    console.log(`[Control] Request: ${key} -> ${ip}`);
+    const requestIcons = { PLAY_PAUSE: '⏯️ ', NEXT_TRACK: '⏭️ ', PREV_TRACK: '⏮️ ' };
+    const requestIcon = key.startsWith('PRESET_') ? '🅿️ ' : (requestIcons[key] || '');
+    console.log(`\n[Control] ${requestIcon}Request: ${key} -> ${ip}`);
 
     const device = SPEAKERS.find(s => s.ip === ip);
     const currentState = await deviceState.get(device) || {};

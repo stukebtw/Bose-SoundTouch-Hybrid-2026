@@ -75,7 +75,7 @@
   async function loadSettings() {
       try {
           // ADDED /api PREFIX HERE!
-          const res = await fetch('/api/admin/settings');
+          const res = await fetch('api/admin/settings');
           if (res.ok) {
               globalSettings = await res.json();
           }
@@ -624,11 +624,11 @@
           return; // Skips polling if user is dragging a slider.
 
       try {
-          const res = await fetch('/api/status');
+          const res = await fetch('api/status');
           const newData = await res.json();
           // --- SAFE HEALTH CHECK INJECTION ---
           try {
-              const hRes = await fetch('/api/health');
+              const hRes = await fetch('api/health');
               if (hRes.ok) {
                   const h = await hRes.json();
                   const banner = document.getElementById('mass-error-banner');
@@ -823,7 +823,7 @@
       // Throttles network requests to 150ms to prevent flooding the hardware.
       if (!volumeThrottleTimer) {
           volumeThrottleTimer = setTimeout(() => {
-              fetch('/api/volume', {
+              fetch('api/volume', {
                   method: 'POST',
                   headers: {
                       'Content-Type': 'application/json'
@@ -847,7 +847,7 @@
       volumeThrottleTimer = null;
       interactionWatchdog = null;
 
-      await fetch('/api/volume', {
+      await fetch('api/volume', {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json'
@@ -943,7 +943,7 @@
               const delta = val - state.lastRef; // Calculates difference since last send.
               if (delta !== 0) {
                   // Sends relative change (+/-) to the backend API.
-                  fetch('/api/zone_volume', {
+                  fetch('api/zone_volume', {
                       method: 'POST',
                       headers: {
                           'Content-Type': 'application/json'
@@ -976,7 +976,7 @@
       if (state) {
           const delta = val - state.lastRef;
           if (delta !== 0) {
-              await fetch('/api/zone_volume', {
+              await fetch('api/zone_volume', {
                   method: 'POST',
                   headers: {
                       'Content-Type': 'application/json'
@@ -1073,7 +1073,7 @@
 
       // 2. Send to Node.js Backend
       try {
-          await fetch('/api/balance', { 
+          await fetch('api/balance', { 
               method: 'POST', 
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ip, value }) 
@@ -1096,7 +1096,7 @@
 
   async function loadPresetMap() {
       try {
-          const res = await fetch('/api/manager/library');
+          const res = await fetch('api/manager/library');
           if (!res.ok) return;
           const items = await res.json();
           presetMap = {};

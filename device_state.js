@@ -125,7 +125,7 @@ function pruneExtendedPresetsFromMemory() {
         }
 
         const count = Object.keys(WAKE_MEMORY).length;
-        if (count > 0) console.log(`[DeviceState] 💾 Auto-resume state loaded: ${count} speaker(s).`);
+        if (count > 0) console.log(`[DeviceState] Auto-resume state loaded: ${count} speaker(s).`);
     } catch (e) {
         console.error('[DeviceState] ⚠️ Could not load resume_state.json:', e.message);
     }
@@ -363,8 +363,8 @@ function evaluateExpectationLocks(ip, finalTrack, finalPlayStatus, isStandby, is
 
     // 1. Check for Safety Timeout
     if (Date.now() > exp.expires) {
-        console.log(`[DeviceState] 🔓 Safety Timeout: UI Unlocked for ${ip}`);
-        console.log(`[DeviceState] 🚨 Deleting EXPECTATION lock for ${ip}!`);
+        console.log(`[DeviceState] Safety Timeout: UI Unlocked for ${ip}`);
+        console.log(`[DeviceState] Deleting EXPECTATION lock for ${ip}!`);
         delete EXPECTATIONS[ip];
         return true;
     }
@@ -392,8 +392,8 @@ function evaluateExpectationLocks(ip, finalTrack, finalPlayStatus, isStandby, is
 
     // 3. Resolve the lock
     if (lockMet) {
-        console.log(`[DeviceState] 🔓 Lock Met (${exp.type}): UI Unlocked for ${ip}`);
-        console.log(`[DeviceState] 🚨 Deleting EXPECTATION lock for ${ip}`);
+        console.log(`[DeviceState] Lock Met (${exp.type}): UI Unlocked for ${ip}`);
+        console.log(`[DeviceState] Deleting EXPECTATION lock for ${ip}`);
         delete EXPECTATIONS[ip];
         return true;
     } else {
@@ -593,13 +593,13 @@ async function initDevice(device) {
                         presetId = parseInt(selection.preset.id || (selection.preset.$ && selection.preset.$.id) || 0);
                     }
                     if (presetId > 0) {
-                        console.log(`[DeviceState] ⏱️ PRESET_${presetId} press on ${device.ip} at ${Date.now()}ms`);
+                        console.log(`[DeviceState] PRESET_${presetId} press on ${device.ip} at ${Date.now()}ms`);
                         const ci = selection.preset?.ContentItem;
                         if (ci) {
                             const source   = ci.$?.source   || ci.source   || '';
                             const location = ci.$?.location || ci.location || '';
                             if (!utils.isHybridContentItem(source, location)) {
-                                console.log(`\n[DeviceState] 🔁 Preset ${presetId} on ${device.ip} — non-hybrid URL detected, routing to MASS directly`);
+                                console.log(`\n[DeviceState] Preset ${presetId} on ${device.ip} — non-hybrid URL detected, routing to MASS directly`);
                                 utils.executeSmartPreset(device.ip, presetId);
                             }
                         }
@@ -725,14 +725,14 @@ async function processSettledState(ip) {
             const isWakingViaPreset = EXPECTATIONS[ip] && EXPECTATIONS[ip].type === 'PRESET';
 
             if (isWakingViaPreset) {
-                console.log(`[DeviceState] ⚡ ${ip} Standby detected but PRESET expectation active — cmdStop suppressed (wake race guard).`);
+                console.log(`[DeviceState] ${ip} Standby detected but PRESET expectation active — cmdStop suppressed (wake race guard).`);
             } else {
                 mass.setPresetMemory(ip, 0);
                 delete LAST_METADATA[ip];
                 if (!LAST_VALID_STATE[ip]) {
-                    if (global.DEBUG_MODE) console.log(`[DeviceState] ⚡ ${ip} Standby detected but no prior state recorded — cmdStop skipped.`);
+                    if (global.DEBUG_MODE) console.log(`[DeviceState] ${ip} Standby detected but no prior state recorded — cmdStop skipped.`);
                 } else if (LAST_VALID_STATE[ip].isStandby !== false) {
-                    if (global.DEBUG_MODE) console.log(`[DeviceState] ⚡ ${ip} Standby detected — prior state was already Standby — cmdStop skipped (no transition).`);
+                    if (global.DEBUG_MODE) console.log(`[DeviceState] ${ip} Standby detected — prior state was already Standby — cmdStop skipped (no transition).`);
                 } else {
                     // The 1-2 Punch: Stop the active stream, then clear MA queue completely
                     console.log(`[DeviceState] 💤 ${ip} entered Standby — stopping MASS.`);
@@ -1123,7 +1123,7 @@ function setExpectation(target, type, value, extraContext = null) {
     // 2. Set the Lock — PLAY_STATUS gets extra time since AirPlay state changes are slow
     const timeoutMs = (type === 'PLAY_STATUS') ? 12000 : 8000;
     EXPECTATIONS[ip] = { type, value, context: extraContext, expires: Date.now() + timeoutMs };
-    console.log(`[DeviceState] 🔒 UI Locked for ${ip}: Waiting for ${type}...`);
+    console.log(`[DeviceState] UI Locked for ${ip}: Waiting for ${type}...`);
     FINAL_STATE[ip].readyForDisplay = false; 
 }
 
@@ -1185,12 +1185,12 @@ setInterval(async () => {
                     
                     // If MASS reports a new track that isn't the dummy name, trigger an update!
                     if (newTrack && newTrack !== state.track && newTrack !== "Music Assistant") {
-                        console.log(`\n[DeviceState] 🐕 Gapless Watchdog caught track change on ${ip}: ${state.track} -> ${newTrack}`);
+                        console.log(`\n[DeviceState] 🔃 Gapless Watchdog caught track change on ${ip}: ${state.track} -> ${newTrack}`);
                         
                         // --- THE RESET & UNMUTE ---
                         // Track advanced! Clear poison suppression state to unlock socket logs
                         if (POISONED_DEVICES[ip]) {
-                            console.log(`[DeviceState] 🔓 Clean track signature detected. Re-activating WebSocket log stream for ${ip}.`);
+                            console.log(`[DeviceState] Clean track signature detected. Re-activating WebSocket log stream for ${ip}.`);
                             delete POISONED_DEVICES[ip];
                         }
 

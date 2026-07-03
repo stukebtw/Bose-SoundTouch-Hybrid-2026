@@ -79,20 +79,20 @@ async function executeGlobalRecovery(btn) {
 
     try {
         // Reload MA DLNA provider
-        await fetch('/api/admin/rescan_ma', {
+        await fetch('api/admin/rescan_ma', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ aggressive: true, provider: 'dlna' })
         });
         
         // Reload MA AirPlay provider
-        await fetch('/api/admin/rescan_ma', {
+        await fetch('api/admin/rescan_ma', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ aggressive: true, provider: 'airplay' })
         });
 
-        await fetch('/api/health/reset', { method: 'POST' }); 
+        await fetch('api/health/reset', { method: 'POST' }); 
         btn.innerText = "✅ Sent";
         setTimeout(() => { dismissHealthModal(); }, 1500);
 
@@ -111,8 +111,8 @@ async function executeGlobalRestart(btn) {
     window.isMaRestartingProcess = true; // Lock the UI loops
 
     try {
-        await fetch('/api/admin/restart_ma', { method: 'POST' });
-        await fetch('/api/health/reset', { method: 'POST' }); 
+        await fetch('api/admin/restart_ma', { method: 'POST' });
+        await fetch('api/health/reset', { method: 'POST' }); 
         
         btn.innerText = "✅ Sent";
         setTimeout(() => { 
@@ -138,7 +138,7 @@ function dismissHealthModal() {
     }
     
     // Tell the backend we are ignoring the error so it stops bugging us
-    fetch('/api/health/reset', { method: 'POST' }).catch(() => console.log("Health reset suppressed")); 
+    fetch('api/health/reset', { method: 'POST' }).catch(() => console.log("Health reset suppressed")); 
 }
 
 // Inject the banner HTML into the DOM as soon as the page loads
@@ -224,7 +224,7 @@ window.triggerGlobalAllOff = async function() {
 
     try {
         // 1. Fetch current states to know who is currently ON
-        const res = await fetch('/api/status');
+        const res = await fetch('api/status');
         const devices = await res.json();
 
         // 2. OPTIMISTIC UI (Adapts to current page)
@@ -256,7 +256,7 @@ window.triggerGlobalAllOff = async function() {
 
         // 4. Send individual POWER keys
         for (const d of onDevices) {
-            await fetch('/api/key', { 
+            await fetch('api/key', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ ip: d.ip, key: 'POWER' }) 

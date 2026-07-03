@@ -1,8 +1,8 @@
 // ============================================================================
 // PHASE 1: IMPORTS & CONSTANTS
 // ============================================================================
-const CURRENT_VERSION = "v3.8.1";
-const ENV_SCHEMA_VERSION = "v3.8.1";
+const CURRENT_VERSION = "v3.8.2";
+const ENV_SCHEMA_VERSION = "v4.0";
 const SETTINGS_SCHEMA_VERSION = "v3.8";
 const minReq = [2, 9, 4]; //MASS VERSION
 let UPDATE_CACHED_DATA = { updateAvailable: false, current: CURRENT_VERSION };
@@ -39,7 +39,7 @@ try {
         fs.renameSync(path.join(LOG_DIR, f), path.join(LOG_DIR, f + '.bak'));
     }
     if (watchdogLogs.length > 0) {
-        console.log(`[Boot] 🗄️ Archived ${watchdogLogs.length} watchdog log(s) from previous session to .bak`);
+        console.log(`[Boot] Archived ${watchdogLogs.length} watchdog log(s) from previous session to .bak`);
     }
 } catch (e) {
     console.error(`[Boot] ⚠️ Could not archive watchdog logs: ${e.message}`);
@@ -214,11 +214,21 @@ if (isReady) {
     require('dotenv').config({ path: envPath, override: true });
 
     // Check required variables
-    const requiredEnvVars = ['APP_IP', 'MASS_IP', 'MASS_USERNAME', 'MASS_PASSWORD'];
+    const requiredEnvVars = ['APP_IP', 'MASS_IP'];
     for (const v of requiredEnvVars) {
         if (!process.env[v] || process.env[v].trim() === '') {
             console.log(`[!!] Validation Failed: Missing or empty variable -> ${v}`);
             isReady = false;
+        }
+    }
+
+    // MASS credentials: either MASS_TOKEN alone, or MASS_USERNAME + MASS_PASSWORD together
+    if (!process.env.MASS_TOKEN || process.env.MASS_TOKEN.trim() === '') {
+        for (const v of ['MASS_USERNAME', 'MASS_PASSWORD']) {
+            if (!process.env[v] || process.env[v].trim() === '') {
+                console.log(`[!!] Validation Failed: Missing or empty variable -> ${v} (or provide MASS_TOKEN instead)`);
+                isReady = false;
+            }
         }
     }
 
@@ -394,13 +404,13 @@ if (!isReady) {
                         if (found.deviceId) existing.deviceId = found.deviceId;
                     } else {
                         v4Speakers.push(found);
-                        console.log(`[V4] ✨ New speaker added: ${found.name} (${found.ip})`);
+                        console.log(`[V4] New speaker added: ${found.name} (${found.ip})`);
                     }
                 }
 
                 fs.writeFileSync(speakersV4Path, JSON.stringify(v4Speakers, null, 2));
 
-                console.log(`\n[V4] 💾 speakers_v4.json updated — ${v4Speakers.length} speaker(s):`);
+                console.log(`\n[V4] speakers_v4.json updated — ${v4Speakers.length} speaker(s):`);
                 console.log("=========================================================================");
                 for (const s of v4Speakers) {
                     if (discoveredIps.has(s.ip)) {
@@ -452,7 +462,7 @@ if (!isReady) {
                 forceRebootTarget = flagData.forceRebootTarget || null;
                 if (flagData.debugMode === true) {
                     global.DEBUG_MODE = true;
-                    console.log(`[Boot] 🐛 Verbose Debug Mode RESTORED from Force flag.`);
+                    console.log(`[Boot] ℹ️ Verbose Debug Mode RESTORED from Force flag.`);
                 }
                 if (forceInjectTarget || forceRebootTarget) {
                     console.log(`[Boot] 🚨 FORCE SEQUENCE FLAG DETECTED!`);
@@ -550,7 +560,7 @@ if (!isReady) {
         
 		// STEP 5: The Introduction (Restart MASS)
         console.log(`\n-----------------------------------------------------------------------`);
-        console.log(`[Boot] 🧹 Triggering Music Assistant restart for a clean network state...`);
+        console.log(`[Boot] Triggering Music Assistant restart for a clean network state...`);
         console.log(`-----------------------------------------------------------------------\n`);
         
         const dockerRestartSuccess = await restartMassContainer();
@@ -573,7 +583,7 @@ if (!isReady) {
         if (massHealth.isOnline) {
             // Check the flag to print the correct message!
             if (dockerRestartSuccess) {
-                console.log(`[Boot] ✅ Music Assistant restarted successfully (v${massHealth.version}).`);
+                console.log(`[Boot] ✓ Music Assistant restarted successfully (v${massHealth.version}).`);
             } else {
                 console.log(`[Boot] ⚠️ Music Assistant is online (v${massHealth.version}), but was NOT restarted.`);
             }
@@ -591,7 +601,7 @@ if (!isReady) {
             // enforcement for any speaker that was offline at boot and connects later.
             deviceState.setLateJoinCallback(enforcePlayerConfigsForSpeaker);
             console.log(`-------------------------------------------------------------------------`);
-            console.log(`[Boot] 🔥 Prefetching recently played items to warm MASS cache...`);
+            console.log(`[Boot] Prefetching recently played items to warm MASS cache...`);
 
             // Fire-and-forget: warms MASS's recently-played index so the first Recents
             // tab load in the UI is fast. Result is intentionally discarded.
@@ -630,7 +640,7 @@ if (!isReady) {
         const KEEP_ALIVE_INTERVAL_MS = 90 * 60 * 1000; // 90 minutes
         // Runs per the interval above to prevent network routers from killing idle DLNA/AirPlay sockets overnight.
         setInterval(async () => {
-            console.log(`\n[Boot] 💓 Executing scheduled Network Keep-Alive ping to Music Assistant...`);
+            console.log(`\n[Boot] Executing scheduled Network Keep-Alive ping to Music Assistant...`);
             try {
                 const massCore = require('./routes/mass');
 

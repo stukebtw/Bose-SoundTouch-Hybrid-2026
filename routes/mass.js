@@ -51,7 +51,7 @@ async function play(target) {
     if (!player)
         return false;
 
-    console.log(`[MASS] ▶️ Sending PLAY/UPPAUSE command to ${player.targetName}`);
+    console.log(`[MASS] Sending PLAY/UPPAUSE command to ${player.targetName}`);
 
     try {
         // 1. Attempt standard MA 2.8.5 Native Recovery
@@ -347,7 +347,7 @@ async function resolveTargetPlayer(target) {
                         targetIp = resolvedByIp.ip;
                         targetName = resolvedByIp.name;
                         masterFound = true;
-                        console.log(`[MASS] 🔀 Redirection: Slave detected. Redirecting to Master -> ${targetName}`);
+                        console.log(`[MASS] Redirection: Slave detected. Redirecting to Master -> ${targetName}`);
                     }
                 }
 
@@ -371,7 +371,7 @@ async function resolveTargetPlayer(target) {
                             targetName = masterPlayer.display_name || masterPlayer.name;
                             let rawIp = masterPlayer.device_info?.ip_address || "";
                             if (rawIp.includes("http")) { try { targetIp = new URL(rawIp).hostname; } catch(e) {} } else if (rawIp) { targetIp = rawIp; }
-                            console.log(`[MASS] 🔀 Redirection (via MAC): Slave detected. Redirecting to Master -> ${targetName}`);
+                            console.log(`[MASS] Redirection (via MAC): Slave detected. Redirecting to Master -> ${targetName}`);
                         }
                     }
                 }
@@ -391,12 +391,16 @@ let _cachedToken = null;
 let _tokenExpiry  = 0;
 
 async function getToken(forceRefresh = false) {
+    if (process.env.MASS_TOKEN) {
+        return process.env.MASS_TOKEN;
+    }
+
     if (!forceRefresh && _cachedToken && Date.now() < _tokenExpiry - 60_000) {
         return _cachedToken;
     }
 
     const reason = forceRefresh ? 'token rejected by MASS (re-auth)' : 'no valid cached token';
-    console.log(`[MASS] 🔐 Authenticating with Music Assistant (${reason})...`);
+    console.log(`[MASS] Authenticating with Music Assistant (${reason})...`);
 
     try {
         const res = await axios.post(`http://${MASS_IP}:${MASS_PORT}/auth/login`, {
@@ -407,7 +411,7 @@ async function getToken(forceRefresh = false) {
         _tokenExpiry  = Date.now() + 24 * 60 * 60 * 1000;
 
         if (_cachedToken) {
-            console.log(`[MASS] ✅ Auth token ${forceRefresh ? 're-acquired' : 'acquired'} — cached for 24h.`);
+            console.log(`[MASS] ✓ Auth token ${forceRefresh ? 're-acquired' : 'acquired'} — cached for 24h.`);
         } else {
             console.error(`[MASS] ❌ Auth request succeeded but response contained no token. Check MASS API format.`);
         }
@@ -517,7 +521,7 @@ async function sendWithRetry(playerId, playerIp, command, args, options = {}) {
                 }
                 token   = newToken;
                 headers = { 'Authorization': `Bearer ${token}` };
-                console.log(`[MASS] 🔄 Re-auth successful. Retrying "${command}"...`);
+                console.log(`[MASS] Re-auth successful. Retrying "${command}"...`);
                 continue; // retry with fresh token, attempt counter unchanged
             }
 
@@ -620,7 +624,7 @@ async function sendAdminCommand(command, args = {}) {
             console.warn(`[MASS] ⚠️ HTTP 401 on admin command "${command}" — cached token rejected. Re-authenticating...`);
             token = await getToken(true);
             if (!token) throw new Error(`[MASS] Re-authentication failed — cannot execute admin command "${command}"`);
-            console.log(`[MASS] 🔄 Re-auth successful. Retrying admin command "${command}"...`);
+            console.log(`[MASS] Re-auth successful. Retrying admin command "${command}"...`);
             return await doRequest(token);
         }
         throw e;
@@ -657,7 +661,7 @@ async function playHealthWarning(speakerIp) {
 async function forceRescan(aggressive = false, targetProvider = 'dlna') {
     try {
         if (aggressive) {
-            console.log(`[MASS] 🔄 Reloading MA ${targetProvider.toUpperCase()} Provider...`);
+            console.log(`[MASS] Reloading MA ${targetProvider.toUpperCase()} Provider...`);
             await sendAdminCommand('config/providers/reload', { instance_id: targetProvider });
 			// ==============================================================
             // 🧹 NEW: FLUSH THE RAM CACHES
@@ -672,7 +676,7 @@ async function forceRescan(aggressive = false, targetProvider = 'dlna') {
             return true;
         }
 
-        console.log(`[MASS] 🔄 Sending keep-alive ping to MA (players/all)...`);
+        console.log(`[MASS] Sending keep-alive ping to MA (players/all)...`);
         await sendAdminCommand('players/all', {});
         return true;
         

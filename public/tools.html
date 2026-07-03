@@ -547,7 +547,7 @@
 		const SERVER_URL = window.location.protocol + "//" + window.location.host;
 		(async function initRestrictedAccess() {
 		    try {
-		        const res = await fetch('/api/admin/settings');
+		        const res = await fetch('api/admin/settings');
 		        if (!res.ok) return;
 		        const s = await res.json();
 		        if (!s.restrictedMode || !s.adminPin) return;
@@ -571,7 +571,7 @@
 		        localStorage.setItem('adminSessionToken', token);
 		    }
 		    try {
-		        const res = await fetch('/api/admin/verify-pin', {
+		        const res = await fetch('api/admin/verify-pin', {
 		            method: 'POST',
 		            headers: { 'Content-Type': 'application/json' },
 		            body: JSON.stringify({ pin, token })
@@ -680,7 +680,7 @@
 		// 1. Fetch from Server
 		async function loadConfig() {
 		    try {
-		        const res = await fetch('/api/admin/settings');
+		        const res = await fetch('api/admin/settings');
 		        if (res.ok) {
 		            fullSettingsPayload = await res.json();
 
@@ -790,7 +790,7 @@
 		    btn.disabled = true;
 
 		    try {
-		        const res = await fetch('/api/manager/providers');
+		        const res = await fetch('api/manager/providers');
 		        if (!res.ok) throw new Error('Server error');
 		        const massProviders = await res.json();
 
@@ -885,7 +885,7 @@
 		    const orig = btn ? btn.innerHTML : null;
 		    if (btn) { btn.disabled = true; btn.textContent = '...'; }
 		    try {
-		        const res = await fetch('/api/admin/settings', {
+		        const res = await fetch('api/admin/settings', {
 		            method: 'POST',
 		            headers: {
 		                'Content-Type': 'application/json'
@@ -912,7 +912,7 @@
 		// Fetch the actual backend state on page load
 		async function syncDebugToggle() {
 		    try {
-		        const res = await fetch('/api/admin/debug_state');
+		        const res = await fetch('api/admin/debug_state');
 		        const data = await res.json();
 		        const toggle = document.getElementById('verbose-debug-toggle');
 		        if (toggle) {
@@ -970,7 +970,7 @@
 		        return;
 		    viewer.value = "Fetching logs...";
 		    try {
-		        const res = await fetch('/api/logs');
+		        const res = await fetch('api/logs');
 		        const text = await res.text();
 		        viewer.value = text || "No logs available yet.";
 		        // Auto-scroll to the bottom (newest logs)
@@ -1032,7 +1032,7 @@
 		async function toggleVerboseDebug() {
 		    const isChecked = document.getElementById('verbose-debug-toggle').checked;
 		    try {
-		        await fetch('/api/admin/toggle_debug', {
+		        await fetch('api/admin/toggle_debug', {
 		            method: 'POST',
 		            headers: {
 		                'Content-Type': 'application/json'
@@ -1180,7 +1180,7 @@
 async function saveScheduledPlays(silent = false) {
 		    if (silent) {
 		        // Fire-and-forget without alert
-		        fetch('/api/admin/settings', {
+		        fetch('api/admin/settings', {
 		            method: 'POST',
 		            headers: { 'Content-Type': 'application/json' },
 		            body: JSON.stringify(fullSettingsPayload)
@@ -1273,7 +1273,7 @@ async function saveScheduledPlays(silent = false) {
 		async function saveWatchdogSpeakers(silent = true) {
 
 		    if (silent) {
-		        fetch('/api/admin/settings', {
+		        fetch('api/admin/settings', {
 		            method: 'POST',
 		            headers: { 'Content-Type': 'application/json' },
 		            body: JSON.stringify(fullSettingsPayload)
@@ -1286,7 +1286,7 @@ async function saveScheduledPlays(silent = false) {
 		async function pushPresetNow(ip, btn) {
 		    if (btn) { btn.disabled = true; btn.textContent = '⏳ Pushing...'; }
 		    try {
-		        const res = await fetch('/api/admin/force_preset_push', {
+		        const res = await fetch('api/admin/force_preset_push', {
 		            method: 'POST',
 		            headers: { 'Content-Type': 'application/json' },
 		            body: JSON.stringify({ ip })
@@ -1303,7 +1303,7 @@ async function saveScheduledPlays(silent = false) {
 
 		async function loadTools() {
 		    try {
-		        const statusRes = await fetch('/api/status');
+		        const statusRes = await fetch('api/status');
 		        const devices = await statusRes.json();
 
 		        configuredSpeakers = devices;
@@ -1333,7 +1333,7 @@ async function saveScheduledPlays(silent = false) {
 
 		        // V4 speaker config card — hidden unless ENABLE_V4 is true on the server
 		        try {
-		            const v4Res = await fetch('/api/admin/v4-speakers');
+		            const v4Res = await fetch('api/admin/v4-speakers');
 		            const v4Data = await v4Res.json();
 		            if (v4Data.enabled) {
 		                enableV4 = true;
@@ -1370,7 +1370,7 @@ async function saveScheduledPlays(silent = false) {
 
 		    try {
 		        // A single Soft Ping (players/all) globally refreshes ALL idle sockets
-		        await fetch('/api/admin/rescan_ma', {
+		        await fetch('api/admin/rescan_ma', {
 		            method: 'POST',
 		            headers: {
 		                'Content-Type': 'application/json'
@@ -1403,7 +1403,7 @@ async function saveScheduledPlays(silent = false) {
 
 		    try {
 		        // 1. Reload DLNA
-		        await fetch('/api/admin/rescan_ma', {
+		        await fetch('api/admin/rescan_ma', {
 		            method: 'POST',
 		            headers: {
 		                'Content-Type': 'application/json'
@@ -1417,7 +1417,7 @@ async function saveScheduledPlays(silent = false) {
 		        btn.innerText = "Reloading AirPlay...";
 
 		        // 2. Reload AirPlay
-		        await fetch('/api/admin/rescan_ma', {
+		        await fetch('api/admin/rescan_ma', {
 		            method: 'POST',
 		            headers: {
 		                'Content-Type': 'application/json'
@@ -1446,7 +1446,7 @@ async function saveScheduledPlays(silent = false) {
 		    btn.innerText = "Restarting...";
 		    btn.disabled = true;
 		    try {
-		        const res = await fetch('/api/admin/restart_ma', {
+		        const res = await fetch('api/admin/restart_ma', {
 		            method: 'POST'
 		        });
 		        const data = await res.json();
@@ -1471,7 +1471,7 @@ async function saveScheduledPlays(silent = false) {
 		    btn.innerText = "Running — check logs...";
 		    btn.disabled = true;
 		    try {
-		        await fetch('/api/admin/enforce_player_configs', { method: 'POST' });
+		        await fetch('api/admin/enforce_player_configs', { method: 'POST' });
 		        btn.innerText = "✅ Sent";
 		    } catch (e) {
 		        btn.innerText = "❌ Error";
@@ -1558,7 +1558,7 @@ async function saveScheduledPlays(silent = false) {
 		    if (btn) { btn.disabled = true; btn.innerText = '⏳ Running...'; }
 
 		    try {
-		        const res = await fetch('/api/admin/force_audit', { method: 'POST' });
+		        const res = await fetch('api/admin/force_audit', { method: 'POST' });
 		        if (res.ok) {
 		            if (btn) btn.innerText = '✅ Sent';
 		            setTimeout(() => { if (btn) { btn.innerText = orig; btn.disabled = false; } }, 4000);
@@ -1670,7 +1670,7 @@ async function saveScheduledPlays(silent = false) {
 		                return;
 		            }
 		            // 2. Send the command!
-		            const res = await fetch('/api/admin/set_wifi', {
+		            const res = await fetch('api/admin/set_wifi', {
 		                method: 'POST',
 		                headers: {
 		                    'Content-Type': 'application/json'
@@ -1706,7 +1706,7 @@ async function saveScheduledPlays(silent = false) {
 		// --- FETCH SYSTEM VERSIONS ---
 		document.addEventListener('DOMContentLoaded', async() => {
 		    try {
-		        const res = await fetch('/api/admin/system_versions');
+		        const res = await fetch('api/admin/system_versions');
 		        if (res.ok) {
 		            const versions = await res.json();
 		            document.getElementById('badge-app-text').innerText = `${versions.app}`;
@@ -1736,7 +1736,7 @@ async function saveScheduledPlays(silent = false) {
 				chevron.innerText = '▲';
 				if (enableV4) {
 					try {
-						const res = await fetch('/api/admin/v4-speakers');
+						const res = await fetch('api/admin/v4-speakers');
 						const data = await res.json();
 						if (data.enabled) v4Speakers = data.speakers;
 					} catch (e) { /* use cached */ }
@@ -1776,7 +1776,7 @@ async function saveScheduledPlays(silent = false) {
 			const resultsList = document.getElementById('discovery-results-list');
 
 			try {
-				const res = await fetch('/api/admin/discover');
+				const res = await fetch('api/admin/discover');
 				if (!res.ok) throw new Error('Server returned an error.');
 				const speakers = await res.json();
 
@@ -1880,7 +1880,7 @@ async function saveScheduledPlays(silent = false) {
 		async function fetchStereoPairs() {
 		    try {
 		        //  Added /admin
-		        const res = await fetch('/api/admin/stereo-pairs');
+		        const res = await fetch('api/admin/stereo-pairs');
 		        if (!res.ok) return;
 		        const pairs = await res.json();
 		        renderStereoPairs(pairs);
@@ -1939,7 +1939,7 @@ async function saveScheduledPlays(silent = false) {
 
 		    try {
 		        // FIXED PATH: Added /admin
-		        const res = await fetch('/api/admin/stereo-pairs', {
+		        const res = await fetch('api/admin/stereo-pairs', {
 		            method: 'POST',
 		            headers: { 'Content-Type': 'application/json' },
 		            body: JSON.stringify({ leftIp, rightIp, name })
@@ -1949,10 +1949,10 @@ async function saveScheduledPlays(silent = false) {
 
 				// 🌟 AUTOMATED TARGETED REBOOTS (Ignores 10.0.0.9x Dummies)
 		        if (!leftIp.startsWith('10.0.0.9')) {
-		            fetch('/api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: leftIp }) });
+		            fetch('api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: leftIp }) });
 		        }
 		        if (!rightIp.startsWith('10.0.0.9')) {
-		            fetch('/api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: rightIp }) });
+		            fetch('api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: rightIp }) });
 		        }
 		            
 		            alert("✅ Pair saved. Reboot commands sent to both speakers.\n\nSpeakers will be back online in approximately 90 seconds.");
@@ -1982,10 +1982,10 @@ async function saveScheduledPlays(silent = false) {
 		        
 				// 🌟 AUTOMATED TARGETED REBOOTS (Ignores 10.0.0.9x Dummies)
 		        if (!leftIp.startsWith('10.0.0.9')) {
-		            fetch('/api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: leftIp }) });
+		            fetch('api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: leftIp }) });
 		        }
 		        if (!rightIp.startsWith('10.0.0.9')) {
-		            fetch('/api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: rightIp }) });
+		            fetch('api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip: rightIp }) });
 		        }
 		        
 		        alert("✅ Pair deleted. Reboot commands sent to both speakers.\n\nSpeakers will be back online in approximately 90 seconds.");

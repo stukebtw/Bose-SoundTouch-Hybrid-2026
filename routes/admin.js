@@ -15,7 +15,7 @@ const { scheduleProviderReload } = require('./utils');
 // Forwards commands directly to controller.js to inherit Master/Slave and Queue cleanup logic
 async function routeToSmartController(ip, key) {
     const LOCAL_PORT = process.env.APP_PORT;
-    console.log(`[Admin] 🔀 Routing ${key} command for ${ip} through the Smart Controller...`);
+    console.log(`[Admin] Routing ${key} command for ${ip} through the Smart Controller...`);
     await axios.post(`http://127.0.0.1:${LOCAL_PORT}/api/key`, {
         ip,
         key

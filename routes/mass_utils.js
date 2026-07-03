@@ -7,24 +7,108 @@ const axios = require('axios');
 const mass = require('./mass');
 const { powerOffAllSpeakers } = require('./utils');
 
-// Restart MASS with a two-path cascade:
-//   1. Docker socket  — works when MASS is on the same host as this app
-//   2. HA Supervisor  — works when MASS is a Home Assistant add-on on a separate VM
-//                       requires HA_TOKEN in .env (long-lived HA token)
+// Talks to the Home Assistant Supervisor's internal API (only reachable from inside
+// HA's own container network, at the special hostname "supervisor"). SUPERVISOR_TOKEN
+// is auto-injected by HA into every add-on's environment — never set manually, never
+// present unless this app is itself running as an HA add-on.
+function supervisorRequest(reqPath, method = 'GET') {
+    return new Promise((resolve, reject) => {
+        const token = process.env.SUPERVISOR_TOKEN;
+        if (!token) {
+            return reject(new Error('SUPERVISOR_TOKEN missing.'));
+        }
+        const req = http.request({
+            hostname: 'supervisor',
+            path: reqPath,
+            method,
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 5000,
+        }, (res) => {
+            let body = '';
+            res.on('data', (chunk) => { body += chunk; });
+            res.on('end', () => {
+                try { resolve(JSON.parse(body)); }
+                catch (e) { resolve({}); }
+            });
+        });
+        req.on('error', reject);
+        req.end();
+    });
+}
+
+// Finds the installed Music Assistant add-on's slug dynamically (handles beta/dev/
+// nightly channel variants and repo forks) instead of assuming a fixed slug — a given
+// HA instance's Music Assistant add-on slug depends on which repository it was installed from.
+async function discoverMusicAssistantAppSlug() {
+    const payload = await supervisorRequest('/addons');
+    const selfPayload = await supervisorRequest('/addons/self/info').catch(() => ({}));
+    const apps = payload.data?.addons || payload.addons || [];
+    const self = selfPayload.data || selfPayload || {};
+    const selfSlug = String(self.slug || '').toLowerCase();
+
+    const candidate = apps.find((app) => {
+        const slug = String(app.slug || '').toLowerCase();
+        const name = String(app.name || '').toLowerCase();
+        if (selfSlug && slug === selfSlug) return false;
+        if (slug.includes('bose_soundtouch_hybrid') || name.includes('soundtouch hybrid')) return false;
+        return slug === 'music_assistant' ||
+            slug.endsWith('_music_assistant') ||
+            slug === 'music_assistant_beta' ||
+            slug.endsWith('_music_assistant_beta') ||
+            slug === 'music_assistant_dev' ||
+            slug.endsWith('_music_assistant_dev') ||
+            slug === 'music_assistant_nightly' ||
+            slug.endsWith('_music_assistant_nightly') ||
+            name === 'music assistant' ||
+            name.includes('music assistant');
+    });
+    return candidate ? candidate.slug : null;
+}
+
+// Path 1 of the cascade below: this app installed AS an HA add-on, restarting the
+// sibling Music Assistant add-on via the Supervisor's own internal API
+// (SUPERVISOR_TOKEN, auto-provided, no setup).
+async function restartViaSupervisor() {
+    const appSlug = await discoverMusicAssistantAppSlug();
+    if (!appSlug) {
+        throw new Error('Music Assistant add-on was not found via Supervisor.');
+    }
+    console.log(`[MASS Restart] Trying HA Supervisor restart for add-on "${appSlug}"...`);
+    await supervisorRequest(`/addons/${appSlug}/restart`, 'POST');
+    console.log(`[MASS Restart] ✓ HA Supervisor: MASS restart command accepted.`);
+    return true;
+}
+
+// Restart MASS with a three-path cascade:
+//   1. Native HA Supervisor — this app running AS an HA add-on; SUPERVISOR_TOKEN is
+//                             auto-injected, nothing to configure. Tried first since
+//                             its presence is a hard signal of which scenario we're in.
+//   2. Docker socket        — works when MASS is on the same Docker host as this app
+//   3. HA Supervisor (public API) — MASS is a Home Assistant add-on on a separate VM;
+//                             requires HA_TOKEN in .env (long-lived HA token)
 // Returns true if any path succeeded, false if all paths failed (non-fatal).
 async function restartMassContainer() {
     const containerName = process.env.MASS_CONTAINER_NAME;
     const massIp        = process.env.MASS_IP;
     const haToken       = process.env.HA_TOKEN;
-    const haPort        = process.env.HA_PORT || '8123';
+    const haPort        = process.env.HA_PORT;
+
+    // --- Path 1: Native HA Supervisor (this app IS the HA add-on) ---
+    if (process.env.SUPERVISOR_TOKEN) {
+        try {
+            return await restartViaSupervisor();
+        } catch (e) {
+            console.log(`[MASS Restart] ⚠️  Supervisor restart failed: ${e.message}`);
+        }
+    }
 
     if (!containerName) {
         console.log(`[MASS Restart] ⚠️  MASS_CONTAINER_NAME not set in .env — skipping restart.`);
         return false;
     }
 
-    // --- Path 1: Docker socket (MASS co-hosted with this app) ---
-    console.log(`[MASS Restart] 🐳 Trying Docker socket restart for "${containerName}"...`);
+    // --- Path 2: Docker socket (MASS co-hosted with this app) ---
+    console.log(`[MASS Restart] Trying Docker socket restart for "${containerName}"...`);
     try {
         await new Promise((resolve, reject) => {
             const req = http.request({
@@ -38,35 +122,35 @@ async function restartMassContainer() {
             req.on('error', reject);
             req.end();
         });
-        console.log(`[MASS Restart] ✅ Docker socket restart successful.`);
+        console.log(`[MASS Restart] ✓ Docker socket restart successful.`);
         return true;
     } catch (dockerErr) {
         console.log(`[MASS Restart] ⚠️  Docker socket failed: ${dockerErr.message}`);
     }
 
-    // --- Path 2: HA Supervisor API (MASS as HA add-on on a separate VM) ---
+    // --- Path 3: HA Supervisor API, public (MASS as HA add-on on a separate VM) ---
     if (haToken && massIp) {
         const addonSlug = containerName.startsWith('addon_') ? containerName.slice(6) : containerName;
-        console.log(`[MASS Restart] 🏠 Trying HA Supervisor API at ${massIp}:${haPort} (add-on: "${addonSlug}")...`);
+        console.log(`[MASS Restart] Trying HA Supervisor API at ${massIp}:${haPort} (add-on: "${addonSlug}")...`);
         try {
             await axios.post(
                 `http://${massIp}:${haPort}/api/services/hassio/addon_restart`,
                 { addon: addonSlug },
                 { headers: { 'Authorization': `Bearer ${haToken}`, 'Content-Type': 'application/json' }, timeout: 10000 }
             );
-            console.log(`[MASS Restart] ✅ HA Supervisor restart command accepted.`);
+            console.log(`[MASS Restart] ✓ HA Supervisor: MASS restart command accepted.`);
             return true;
         } catch (haErr) {
             const detail = haErr.response ? `HTTP ${haErr.response.status}` : haErr.message;
-            console.log(`[MASS Restart] ⚠️  HA Supervisor restart failed: ${detail}`);
+            console.log(`[MASS Restart] ⚠️  HA Supervisor: MASS restart failed: ${detail}`);
         }
     } else if (!haToken) {
-        console.log(`[MASS Restart] ℹ️  HA_TOKEN not set — HA Supervisor path unavailable.`);
-        console.log(`[MASS Restart] ℹ️  For HA add-on / separate VM setups, add HA_TOKEN to config/.env.`);
+        console.log(`[MASS Restart] ⚠️  HA_TOKEN not set — HA Supervisor path unavailable.`);
+        console.log(`[MASS Restart] ⚠️  For HA add-on / separate VM setups, add HA_TOKEN to config/.env.`);
     }
 
     // --- All paths exhausted ---
-    console.log(`[MASS Restart] ℹ️  Could not restart MASS — it will continue running in its current state.`);
+    console.log(`[MASS Restart] ⚠️  Could not restart MASS — it will continue running in its current state.`);
     return false;
 }
 
@@ -175,12 +259,12 @@ async function auditSpeakerConfig(baseUrl, reqConfig, massPlayers, speaker) {
 
     if (Object.keys(batchPayload).length > 0) {
         console.log(`[MASS Utils] ⚠️ UI drift detected on ${player.name}. Pushing user-facing settings (${activeMode.toUpperCase()})...`);
-        if (global.DEBUG_MODE) console.log(`[MASS Utils] 📦 Payload: ${JSON.stringify(batchPayload)}`);
+        if (global.DEBUG_MODE) console.log(`[MASS Utils] Payload: ${JSON.stringify(batchPayload)}`);
         await axios.post(`${baseUrl}/api`, {
             command: "config/players/save", args: { player_id: player.player_id, values: batchPayload }
         }, reqConfig);
     } else {
-        console.log(`[MASS Utils] ⚡ ${player.name} (${activeMode.toUpperCase()}) user-facing config verified.`);
+        console.log(`[MASS Utils] ${player.name} (${activeMode.toUpperCase()}) user-facing config verified.`);
     }
 }
 
@@ -210,7 +294,7 @@ async function enforcePlayerConfigs(speakers) {
             );
 
             if (allDiscovered) {
-                console.log(`[Boot] ✅ All configured speakers discovered by MA network scan.`);
+                console.log(`[Boot] ✓ All configured speakers discovered by MA network scan.`);
                 break;
             }
             await new Promise(resolve => setTimeout(resolve, 5000));
@@ -224,7 +308,7 @@ async function enforcePlayerConfigs(speakers) {
         await new Promise(resolve => setTimeout(resolve, 15000));
 
         // --- STAGE 2: Core Configuration Audit ---
-        console.log(`[MASS Utils] ⚙️ Auditing user-facing UI configurations...`);
+        console.log(`[MASS Utils] Auditing user-facing UI configurations...`);
         for (const speaker of speakers) {
             await auditSpeakerConfig(baseUrl, reqConfig, massPlayers, speaker);
         }
@@ -240,7 +324,7 @@ async function enforcePlayerConfigs(speakers) {
 // MASS to recognize it and hydrate protocol config keys, then runs the same audit.
 async function enforcePlayerConfigsForSpeaker(ip) {
     const baseUrl = `http://${process.env.MASS_IP}:${process.env.MASS_PORT}`;
-    console.log(`[MASS Utils] 🔧 Late-join enforcement for ${ip} — waiting 12s for MA to recognize speaker...`);
+    console.log(`[MASS Utils] Late-join enforcement for ${ip} — waiting 12s for MA to recognize speaker...`);
     await new Promise(resolve => setTimeout(resolve, 12000));
 
     try {
@@ -307,7 +391,7 @@ router.post('/restart_ma', async (req, res) => {
             console.log(`[Admin] ⚠️ MASS restart timeout. It may still be booting in the background.`);
         }
     } else {
-        console.log(`[Admin] ♻️ Running player config enforcement on the running MASS instance...`);
+        console.log(`[Admin] Running player config enforcement on the running MASS instance...`);
         await runEnforcePlayerConfigs();
     }
 });
@@ -318,9 +402,9 @@ router.post('/rescan_ma', async (req, res) => {
         const provider = req.body.provider || 'dlna'; 
 
         if (aggressive) {
-            console.log(`\n[Admin] 🔄 Reloading MA ${provider.toUpperCase()} Provider...`);
+            console.log(`\n[Admin] Reloading MA ${provider.toUpperCase()} Provider...`);
         } else {
-            console.log(`\n[Admin] 🔄 Pinging MA Providers (keep-alive)...`);
+            console.log(`\n[Admin] Pinging MA Providers (keep-alive)...`);
         }
         
         const success = await mass.forceRescan(aggressive, provider);
@@ -339,7 +423,7 @@ router.post('/rescan_ma', async (req, res) => {
 
 // POST /api/admin/enforce_player_configs
 router.post('/enforce_player_configs', async (req, res) => {
-    console.log(`\n[Admin] ⚙️ Manual player config enforcement requested via Web UI...`);
+    console.log(`\n[Admin] Manual player config enforcement requested via Web UI...`);
     res.json({ success: true, message: "Enforcing player configs — check logs for progress." });
     runEnforcePlayerConfigs().catch(e => console.error(`[Admin] ❌ Enforce player configs failed: ${e.message}`));
 });

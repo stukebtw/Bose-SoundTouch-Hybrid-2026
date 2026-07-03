@@ -230,7 +230,7 @@ async function queryPresetsForSpeaker(ip, phase = null) {
 
     appendWatchdogLog(ip, entry);
     if (global.DEBUG_MODE) {
-        console.log(`[Watchdog] 📋 Preset snapshot for ${ip}${phase ? ' (' + phase + ')' : ''}: ${entry.presets.length} preset(s)${entry.error ? ' — ERROR: ' + entry.error : ''}`);
+        console.log(`[Watchdog] Preset snapshot for ${ip}${phase ? ' (' + phase + ')' : ''}: ${entry.presets.length} preset(s)${entry.error ? ' — ERROR: ' + entry.error : ''}`);
     }
 }
 
@@ -301,7 +301,7 @@ async function runSystemRestart(hour = null, minute = null) {
 }
 
 function startScheduler() {
-    console.log(`[Scheduler] 🕰️ Background automation engine started.`);
+    console.log(`[Scheduler] Background automation engine started.`);
 
     // Preset Watchdog interval starts counting from here — NOT from 0/boot. Pre-Flight
     // already reboots/heals speakers as needed on startup, so re-running this within the
@@ -360,7 +360,7 @@ function startScheduler() {
             // Hourly heartbeat — always visible so you know the watchdog is alive
             if (Date.now() - lastObserveHourlyLogMs >= 60 * 60000) {
                 lastObserveHourlyLogMs = Date.now();
-                console.log(`[Watchdog] 👁️  Monitoring ${watchdogSpeakers.length} speaker(s). Querying every 5 min, logging to watchdog_*.json.`);
+                console.log(`[Watchdog] Monitoring ${watchdogSpeakers.length} speaker(s). Querying every 5 min, logging to watchdog_*.json.`);
             }
             // Query every 5 min
             if (Date.now() - lastObserveRunMs >= 5 * 60000) {
@@ -406,7 +406,7 @@ async function executeSmartPreset(ip, id) {
     const mass = require('./mass'); 
     const deviceState = require('../device_state');
 
-    console.log(`\n[Smart Engine] ⚙️ Executing Preset ${id} for ${ip}...`);
+    console.log(`\n[Smart Engine] Executing Preset ${id} for ${ip}...`);
     
     // 1. Log the memory (Moved from old Bridge)
     mass.setPresetMemory(ip, id);
@@ -448,7 +448,7 @@ async function powerOffAllSpeakers() {
             const statusRes = await axios.get(`http://${speaker.ip}:8090/now_playing`, { timeout: 2000 });
             if (!statusRes.data.includes('source="STANDBY"')) {
                 console.log(`   └─ 💤 Initiating smart power-down for ${speaker.name}...`);
-                console.log(`   └─ 🔀 Routing POWER command through the Smart Controller...`);
+                console.log(`   └─ Routing POWER command through the Smart Controller...`);
                 await axios.post(`http://127.0.0.1:${LOCAL_PORT}/api/key`, { ip: speaker.ip, key: 'POWER' });
             }
         } catch (e) {
@@ -465,8 +465,8 @@ async function powerOffAllSpeakers() {
 async function executeSmartShutdown(injectTarget = null, rebootTarget = null) {
     console.log(`\n=======================================================================`);
     console.log(`🚨 SOUNDTOUCH HYBRID RESTART SEQUENCE INITIATED`);
-    if (injectTarget) console.log(`🎯 Inject Target: ${injectTarget === 'all' ? 'ALL SPEAKERS' : injectTarget}`);
-    if (rebootTarget) console.log(`🎯 Reboot Target: ${rebootTarget === 'all' ? 'ALL SPEAKERS' : rebootTarget}`);
+    if (injectTarget) console.log(`Inject Target: ${injectTarget === 'all' ? 'ALL SPEAKERS' : injectTarget}`);
+    if (rebootTarget) console.log(`Reboot Target: ${rebootTarget === 'all' ? 'ALL SPEAKERS' : rebootTarget}`);
     console.log(`=======================================================================`);
 
     if (injectTarget || rebootTarget) {
@@ -498,7 +498,7 @@ function scheduleProviderReload(context) {
     const label = context || 'rebooted speakers';
     console.log(`[Scheduler] ⏱️ Starting 90-second Music Assistant recovery timer for ${label}...`);
     setTimeout(async () => {
-        console.log(`[Scheduler] 🔄 Reloading Music Assistant DLNA & AirPlay providers for ${label}...`);
+        console.log(`[Scheduler] Reloading Music Assistant DLNA & AirPlay providers for ${label}...`);
         try {
             const LOCAL_PORT = process.env.APP_PORT || 8080;
             await axios.post(`http://127.0.0.1:${LOCAL_PORT}/api/admin/rescan_ma`, { aggressive: true, provider: 'dlna' });
@@ -530,7 +530,7 @@ async function rebootSpeakerAndReload(ip) {
         console.log(`[Watchdog] ⚠️ Could not verify power state for ${ip} before reboot. Proceeding anyway.`);
     }
 
-    console.log(`[Watchdog] 🔄 Sending Telnet 'sys reboot' to ${ip} on port 17000...`);
+    console.log(`[Watchdog] Sending Telnet 'sys reboot' to ${ip} on port 17000...`);
     const client = new net.Socket();
     client.on('error', (err) => console.log(`[Watchdog] Telnet error on ${ip}: ${err.message}`));
     client.connect(17000, ip, () => {

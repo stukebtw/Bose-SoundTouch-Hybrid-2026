@@ -93,7 +93,7 @@ function injectPort17000Commands(ip, commands) {
                     cmdLog = `boseurls`;
                 }
 
-                console.log(`   ├─ ⚙️  [${i+1}/${commands.length}] Injecting: ${cmdLog}`);
+                console.log(`   ├─ [${i+1}/${commands.length}] Injecting: ${cmdLog}`);
                 client.write(commands[i] + '\r\n');
                 await new Promise(r => setTimeout(r, 1000)); // Crucial 1000ms universal delay
             }
@@ -265,7 +265,7 @@ async function runSetup(forceInjectTarget = null, forceRebootTarget = null) {
                     console.log(`   └─ ⚠️ Timed out waiting for speaker to return. Moving to next speaker.`);
                     continue;
                 }
-                console.log(`   ├─ ✨ Speaker is clean. Proceeding with standard V3 Setup...`);
+                console.log(`   ├─ Speaker is clean. Proceeding with standard V3 Setup...`);
             }
 
             // ==========================================================
@@ -323,9 +323,9 @@ async function runSetup(forceInjectTarget = null, forceRebootTarget = null) {
                     console.log(`   ├─ 🚨 FORCE INJECTION ENABLED: Bypassing health checks.`);
                 }
 
-                console.log(`   ├─ ⚙️ Initiating NVRAM Injection sequence via Port 17000...`);
+                console.log(`   ├─ Initiating NVRAM Injection sequence via Port 17000...`);
                 const targetMargeId = hasMargeId ? currentMargeId : macAddress;
-                console.log(`   ├─ 🎯 Target MargeID: ${targetMargeId}`);
+                console.log(`   ├─ Target MargeID: ${targetMargeId}`);
                 
                 // Build the execution stack
                 const commandList = [
@@ -342,7 +342,7 @@ async function runSetup(forceInjectTarget = null, forceRebootTarget = null) {
                     commandList.push(`envswitch AccountId set ${targetMargeId}`);
                 }
 
-                console.log(`   ├─ ✍️  Writing configurations sequentially...`);
+                console.log(`   ├─ Writing configurations sequentially...`);
                 const injectionSuccess = await injectPort17000Commands(speaker.ip, commandList);
 
                 if (!injectionSuccess) {
@@ -353,13 +353,13 @@ async function runSetup(forceInjectTarget = null, forceRebootTarget = null) {
                 console.log(`   ├─ ⏳ Waiting 10 seconds for NVRAM to safely write to flash memory...`);
                 await new Promise(resolve => setTimeout(resolve, 10000));
 
-                console.log(`   └─ 🧠 Save complete. Hard-rebooting ${speaker.name}...`);
+                console.log(`   └─ Save complete. Hard-rebooting ${speaker.name}...`);
                 await injectPort17000Commands(speaker.ip, [`sys reboot`]);
                 rebootedIps.push(speaker.ip);
             
             // Route C: Force Reboot only (preset recovery no longer triggers a reboot)
             } else if (isRebootTarget) {
-                console.log(`   └─ 🔄 FORCE REBOOT SEQUENCE: Soft-rebooting ${speaker.name}...`);
+                console.log(`   └─ FORCE REBOOT SEQUENCE: Soft-rebooting ${speaker.name}...`);
                 await injectPort17000Commands(speaker.ip, [`sys reboot`]);
                 rebootedIps.push(speaker.ip);
             }
@@ -369,7 +369,7 @@ async function runSetup(forceInjectTarget = null, forceRebootTarget = null) {
             // or pointing to non-Hybrid URLs. Skipped if Route B ran (cloud handshake covers it).
             if (needsPresetPush && !needsInjection) {
                 console.log(`   ├─ ⚠️ Action Required: Presets missing or not pointing to Hybrid Bridge.`);
-                console.log(`   └─ 📋 Pushing Hybrid presets directly — no reboot required.`);
+                console.log(`   └─ Pushing Hybrid presets directly — no reboot required.`);
                 await pushPresetsToSpeaker(speaker.ip);
             }
 

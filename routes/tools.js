@@ -61,7 +61,7 @@ router.post('/admin/settings', (req, res) => {
                 const logFile = path.join(logDir, `watchdog_${ip.replace(/\./g, '_')}.json`);
                 if (fs.existsSync(logFile)) {
                     fs.unlinkSync(logFile);
-                    console.log(`[Watchdog] 🗑️ Cleared stale log for ${ip}`);
+                    console.log(`[Watchdog] Cleared stale log for ${ip}`);
                 }
             }
         }
@@ -100,11 +100,11 @@ router.post('/admin/verify-pin', (req, res) => {
     const settings = getSettings();
     if (!settings.restrictedMode || !settings.adminPin) return res.json({ success: true });
     if (pin !== settings.adminPin) {
-        console.log(`[Tools] 🔐 Failed admin unlock attempt`);
+        console.log(`[Tools] Failed admin unlock attempt`);
         return res.json({ success: false });
     }
     ADMIN_SESSIONS.add(token);
-    console.log(`[Tools] 🔓 Admin session unlocked (token: ...${token.slice(-6)})`);
+    console.log(`[Tools] Admin session unlocked (token: ...${token.slice(-6)})`);
     res.json({ success: true });
 });
 
@@ -184,7 +184,7 @@ const getStereoPairs = () => {
 const saveStereoPairs = (data) => {
     try {
         fs.writeFileSync(stereoPairsFile, JSON.stringify(data, null, 2));
-        console.log(`[Tools] 💾 Successfully saved ${data.length} stereo pair(s) to disk.`);
+        console.log(`[Tools] Successfully saved ${data.length} stereo pair(s) to disk.`);
     } catch (err) {
         console.error(`[Tools] ❌ Error writing stereo pairs file:`, err.message);
     }
@@ -235,12 +235,12 @@ async function fetchSpeakerDeviceId(ip) {
 
         for (const p of pairs) {
             if (p.leftDeviceId && deviceIdToIp[p.leftDeviceId] && deviceIdToIp[p.leftDeviceId] !== p.leftIp) {
-                console.log(`[Tools] 🔄 Stereo pair "${p.name}": left IP updated ${p.leftIp} → ${deviceIdToIp[p.leftDeviceId]}`);
+                console.log(`[Tools] Stereo pair "${p.name}": left IP updated ${p.leftIp} → ${deviceIdToIp[p.leftDeviceId]}`);
                 p.leftIp = deviceIdToIp[p.leftDeviceId];
                 ipUpdates++;
             }
             if (p.rightDeviceId && deviceIdToIp[p.rightDeviceId] && deviceIdToIp[p.rightDeviceId] !== p.rightIp) {
-                console.log(`[Tools] 🔄 Stereo pair "${p.name}": right IP updated ${p.rightIp} → ${deviceIdToIp[p.rightDeviceId]}`);
+                console.log(`[Tools] Stereo pair "${p.name}": right IP updated ${p.rightIp} → ${deviceIdToIp[p.rightDeviceId]}`);
                 p.rightIp = deviceIdToIp[p.rightDeviceId];
                 ipUpdates++;
             }
@@ -254,7 +254,7 @@ async function fetchSpeakerDeviceId(ip) {
 
 router.get('/admin/stereo-pairs', (req, res) => {
     if (global.DEBUG_MODE) {
-        console.log(`[Tools] 📥 Fetching active stereo pairs...`);
+        console.log(`[Tools] Fetching active stereo pairs...`);
     }
     res.json(getStereoPairs());
 });
@@ -268,9 +268,9 @@ router.post('/admin/stereo-pairs', async (req, res) => {
         fetchSpeakerDeviceId(rightIp)
     ]);
 
-    if (leftDeviceId)  console.log(`[Tools] 🔑 Left deviceId stored: ${leftDeviceId}`);
+    if (leftDeviceId)  console.log(`[Tools] Left deviceId stored: ${leftDeviceId}`);
     else               console.log(`[Tools] ⚠️ Could not fetch deviceId for ${leftIp} — pair created without it.`);
-    if (rightDeviceId) console.log(`[Tools] 🔑 Right deviceId stored: ${rightDeviceId}`);
+    if (rightDeviceId) console.log(`[Tools] Right deviceId stored: ${rightDeviceId}`);
     else               console.log(`[Tools] ⚠️ Could not fetch deviceId for ${rightIp} — pair created without it.`);
 
     const pairs = getStereoPairs();
@@ -290,7 +290,7 @@ router.post('/admin/stereo-pairs', async (req, res) => {
 });
 
 router.delete('/admin/stereo-pairs/:id', (req, res) => {
-    console.log(`[Tools] 🗑️ Deleting stereo pair ID: ${req.params.id}`);
+    console.log(`[Tools] Deleting stereo pair ID: ${req.params.id}`);
     let pairs = getStereoPairs();
     pairs = pairs.filter(p => p.id !== req.params.id);
     saveStereoPairs(pairs);

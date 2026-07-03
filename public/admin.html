@@ -66,7 +66,7 @@
   }
 
   async function loadAdmin() {
-    const statusRes = await fetch('/api/status');
+    const statusRes = await fetch('api/status');
     const devices = await statusRes.json();
     
     document.getElementById('admin-grid').innerHTML = devices.map(d => {
@@ -241,7 +241,7 @@
       }
 
       // 2. Send the command to the backend
-      await fetch('/api/admin/key', { 
+      await fetch('api/admin/key', { 
           method: 'POST', 
           headers: {'Content-Type':'application/json'}, 
           body: JSON.stringify({ ip, key: 'POWER' }) 
@@ -256,7 +256,7 @@
       if (btn) { btn.disabled = true; btn.textContent = '...'; }
       try {
           const newName = document.getElementById(`n-${ip}`).value;
-          const res = await fetch('/api/admin/name', {
+          const res = await fetch('api/admin/name', {
               method: 'POST',
               headers: {'Content-Type':'application/json'},
               body: JSON.stringify({ ip, name: newName })
@@ -281,10 +281,10 @@
       }
   }
 
-  async function sB(ip, value) { await fetch('/api/admin/bass', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip, value }) }); }
+  async function sB(ip, value) { await fetch('api/admin/bass', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip, value }) }); }
   async function pBT(ip, btn) {
       if (btn) { btn.disabled = true; btn.innerText = '...'; }
-      await fetch('/api/admin/bluetooth', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip }) });
+      await fetch('api/admin/bluetooth', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip }) });
       if (btn) {
           btn.innerText = '✅ Active';
           setTimeout(() => { btn.innerText = 'Pairing'; btn.disabled = false; }, 4000);
@@ -293,7 +293,7 @@
   
   async function tS(ip, tag, btn) { 
       btn.innerText = "...";
-      const res = await fetch('/api/admin/settings_toggle', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip, tag }) }); 
+      const res = await fetch('api/admin/settings_toggle', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip, tag }) }); 
       const d = await res.json(); 
       if(d.error) alert("Error: " + d.error);
       else { btn.innerText = d.state === 'true' ? 'ON' : 'OFF'; btn.className = d.state === 'true' ? 'state-on' : 'state-off'; }
@@ -301,7 +301,7 @@
   
   async function tA(ip, btn) { 
       btn.innerText = "...";
-      const r = await fetch('/api/admin/auto_off', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip }) }); 
+      const r = await fetch('api/admin/auto_off', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip }) }); 
       const d = await r.json(); 
       btn.innerText = d.state === 'true' ? 'ON' : 'OFF'; btn.className = d.state === 'true' ? 'state-on' : 'state-off';
   }
@@ -316,7 +316,7 @@
 async function rebootSpk(ip) {
     if(!confirm("Are you sure you want to completely reboot this speaker via Telnet? This will take a moment.\n\n⚠️ Note: Once rebooted, the system will forcefully restart the DLNA and AirPlay providers to restore the socket. Active audio streams on other speakers may momentarily stop.")) return;
     
-    await fetch('/api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip }) });
+    await fetch('api/admin/reboot_speaker', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ip }) });
     alert("✅ Reboot command sent.\n\nThe speaker will be back online in approximately 90 seconds.");
 }
 
@@ -340,7 +340,7 @@ async function toggleSource(ip, btn) {
 
       try {
           // 2. SEND COMMAND: Let the backend handle the complex Preset -> Stop sequence
-          const r = await fetch('/api/admin/toggle_source', { 
+          const r = await fetch('api/admin/toggle_source', { 
               method: 'POST', 
               headers: {'Content-Type':'application/json'}, 
               body: JSON.stringify({ ip }) 
@@ -358,7 +358,7 @@ async function toggleSource(ip, btn) {
 
   (async function initRestrictedAccess() {
       try {
-          const res = await fetch('/api/admin/settings');
+          const res = await fetch('api/admin/settings');
           if (!res.ok) return;
           const s = await res.json();
           if (!s.restrictedMode || !s.adminPin) return;
@@ -382,7 +382,7 @@ async function toggleSource(ip, btn) {
           localStorage.setItem('adminSessionToken', token);
       }
       try {
-          const res = await fetch('/api/admin/verify-pin', {
+          const res = await fetch('api/admin/verify-pin', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ pin, token })

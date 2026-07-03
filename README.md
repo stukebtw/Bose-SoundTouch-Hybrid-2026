@@ -1,4 +1,4 @@
-# vvv3.8.2 Quick Notes: 
+# v3.8.2 Quick Notes: 
 *	🔊 v4.0 .ENV Schema. Read console log. You need to update the new file
 *	🔊 Address Bugs and Several Enhancements
 *   🔊 Improve Auto Enforcement of MA Player Configs on startup and added manual option on Tools page #125
@@ -30,7 +30,7 @@
 
 Install: https://github.com/TJGigs/Bose-SoundTouch-Hybrid-2026/edit/main/README.md#installations-via-docker-compose
 
-# <img src="public/images/hybrid_icon.png" width="30"> Bose SoundTouch Hybrid 2026 - vvv3.8.2
+# <img src="public/images/hybrid_icon.png" width="30"> Bose SoundTouch Hybrid 2026 - v3.8.2
 
 **A free, open-source private cloud streaming service replacing the Bose Cloud Service to maintain 100% of the smart speaker functionality of your SoundTouch 10, 20, 30, Wave Speakers and Wireless Link. Physical Presets Included!**
 

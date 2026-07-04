@@ -1,19 +1,18 @@
-version: "3.9"
-
 services:
   bose-soundtouch-hybrid:
     image: node:18-alpine
     container_name: bose-soundtouch-hybrid
     working_dir: /app
-
     network_mode: "host"
 
     volumes:
       - ./:/app
       - /etc/localtime:/etc/localtime:ro
 
-    env_file:
-      - .env
+    environment:
+      APP_PORT: "8080"
+      APP_HOST: "0.0.0.0"
+      BASE_URL: "https://soundtouch.<deinedomain>"
 
     command: >
       sh -c "npm install && npm start"
